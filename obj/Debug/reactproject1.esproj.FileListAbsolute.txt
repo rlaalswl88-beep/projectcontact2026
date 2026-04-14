@@ -1,0 +1,2 @@
+C:\React_0401\reactproject1\reactproject1\obj\Debug\reactproject1.esproj.CoreCompileInputs.cache
+C:\React_0401\reactproject1\obj\Debug\reactproject1.esproj.CoreCompileInputs.cache
