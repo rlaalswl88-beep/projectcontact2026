@@ -38,7 +38,7 @@ function TopStories() {
             </div>
             <div className="main_top">
                 <div className="thumb_cont">
-                    <Link to="/step1">
+                    <Link to="/isolation/step1">
                         <div className="thumb">
                             <img
                                 src="https://dimg.donga.com/a/690/380/90/3/carriage/ORIGINAL/images/original_main_edit/693f52e31a10d2739e10.png"

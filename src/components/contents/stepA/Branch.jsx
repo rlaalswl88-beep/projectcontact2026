@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import './step1.css';
+import './branch.css';
 
 const PULSE_MIN = 40;
 const PULSE_MAX = 100;
