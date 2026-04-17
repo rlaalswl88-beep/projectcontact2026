@@ -8,12 +8,15 @@ import Footer from "./components/share/Footer";
 import Branch from "./components/contents/stepA/Branch";
 import Scrolling from "./components/contents/stepB/Scrolling";
 import Layering from "./components/contents/stepC/Layering";
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 
 const prevent = (e) => {
     e.preventDefault();
 };
 function App() {
+    const location = useLocation();
+    const hideFooter = location.pathname === "/isolation/step2";
+
     return (
         <div id="wrapper" className="adaptive">
             <Nav />
@@ -34,7 +37,7 @@ function App() {
                     </Routes>
                 </div>
             </div>
-            <Footer />
+            {!hideFooter && <Footer />}
         </div>
     );
 }
