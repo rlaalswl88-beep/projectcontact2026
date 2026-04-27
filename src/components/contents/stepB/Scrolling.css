@@ -241,7 +241,10 @@
   gap: 12px;
   min-width: 240px;
   color: var(--white);
+  opacity: var(--reveal, 0);
+  filter: blur(calc((1 - var(--reveal, 0)) * 10px));
   transform-style: preserve-3d;
+  transition: opacity 420ms ease, filter 420ms ease;
 }
 
 .scroll3d__chapter span,

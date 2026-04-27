@@ -16,6 +16,17 @@ function lerp(start, end, progress) {
   return start + (end - start) * progress;
 }
 
+function smoothstep(edge0, edge1, value) {
+  const x = clamp((value - edge0) / (edge1 - edge0), 0, 1);
+  return x * x * (3 - 2 * x);
+}
+
+function revealBetween(progress, start, fullyVisible, end) {
+  const fadeIn = smoothstep(start, fullyVisible, progress);
+  const fadeOut = 1 - smoothstep(fullyVisible, end, progress);
+  return clamp(Math.min(fadeIn, fadeOut), 0, 1);
+}
+
 // 3D 공간 안에 배치할 흰색 기둥들을 미리 만듭니다.
 // 각 기둥은 CSS 변수로 x/y/z 위치와 높이를 받아서 깊이감 있게 놓입니다.
 function buildDepthItems() {
@@ -304,6 +315,12 @@ function Scrolling() {
   const viewportStyle = {
     '--progress': scrollProgress,
   };
+  const revealStyles = {
+    one: { '--reveal': revealBetween(scrollProgress, 0.03, 0.1, 0.24) },
+    two: { '--reveal': revealBetween(scrollProgress, 0.26, 0.38, 0.54) },
+    three: { '--reveal': revealBetween(scrollProgress, 0.52, 0.67, 0.82) },
+    destination: { '--reveal': smoothstep(0.78, 0.92, scrollProgress) },
+  };
 
   return (
     <section className="scroll3d" ref={shellRef}>
@@ -370,19 +387,19 @@ function Scrolling() {
               <span key={item.id} className={item.className} style={item.style} />
             ))}
 
-            <div className="scroll3d__chapter scroll3d__chapter--one">
+            <div className="scroll3d__chapter scroll3d__chapter--one" style={revealStyles.one}>
               <span>01</span>
               <strong>Signal Lost</strong>
             </div>
-            <div className="scroll3d__chapter scroll3d__chapter--two">
+            <div className="scroll3d__chapter scroll3d__chapter--two" style={revealStyles.two}>
               <span>02</span>
               <strong>Trace Contact</strong>
             </div>
-            <div className="scroll3d__chapter scroll3d__chapter--three">
+            <div className="scroll3d__chapter scroll3d__chapter--three" style={revealStyles.three}>
               <span>03</span>
               <strong>Open Channel</strong>
             </div>
-            <div className="scroll3d__destination" data-active={destinationActive}>
+            <div className="scroll3d__destination" style={revealStyles.destination} data-active={destinationActive}>
               <span />
               <strong>Connection Point</strong>
             </div>
