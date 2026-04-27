@@ -39,18 +39,18 @@ function TopStories() {
             <div className="main_top">
                 <div className="thumb_cont">
                     <Link to="/isolation/step1">
-                        <div className="thumb" style={{width: '690px', height: '380px', overflow: 'hidden' }}>
+                        <div className="thumb top_visual_thumb" style={{width: '690px', height: '380px', overflow: 'hidden' }}>
                             <img style={{width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
                                 src="../public/img/top/20260424_112804731.png"
                                 alt=""
                             />
                         </div>
-                        <div className="cont_info">
+                        <div className="cont_info top_visual_info">
                             <span className="sub_tit" />
                             <span className="tit">고립,그리고 연결</span>
                             <span className="txt"></span>
                         </div>
-                        <span className="date">2026.04.24</span>
+                        <span className="date top_visual_date">2026.04.24</span>
                     </Link>
                 </div>
                 <div className="list_cont">

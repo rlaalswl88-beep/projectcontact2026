@@ -13,12 +13,7 @@ function Header() {
                   <section className="logo_sec">
                       <h1>
                           <a href="#" onClick={prevent} aria-label="동아일보">
-                              동아일보
-                              <i className="logo">
-                                  <svg>
-                                      <use href="#ic-logo" />
-                                  </svg>
-                              </i>
+                              <span className="header_brand_text">동아일보</span>
                           </a>
                       </h1>
                       <section className="gnb_sec">
@@ -40,8 +35,9 @@ function Header() {
                                   <li role="presentation" className="search">
                                       <button type="button" role="menuitem" aria-label="통합검색">
                                           <i className="ic">
-                                              <svg>
-                                                  <use href="#ic-search" />
+                                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                  <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="2" />
+                                                  <line x1="16" y1="16" x2="21" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                                               </svg>
                                           </i>
                                           <span className="is_blind">통합검색</span>
@@ -60,8 +56,9 @@ function Header() {
                                   <li role="presentation" className="login">
                                       <a href="#" onClick={prevent} role="menuitem" className="login_btn" aria-label="마이페이지">
                                           <i className="ic">
-                                              <svg>
-                                                  <use href="#ic-member" />
+                                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                  <circle cx="12" cy="8.2" r="3.6" fill="none" stroke="currentColor" strokeWidth="2" />
+                                                  <path d="M4.5 19c1.9-3.2 4.4-4.8 7.5-4.8s5.6 1.6 7.5 4.8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                                               </svg>
                                           </i>
                                           <span className="is_blind">마이페이지</span>
@@ -70,8 +67,10 @@ function Header() {
                                   <li role="presentation">
                                       <button type="button" role="menuitem" aria-label="전체메뉴 펼치기">
                                           <i className="ic">
-                                              <svg>
-                                                  <use href="#ic-menu" />
+                                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                  <line x1="4" y1="7" x2="20" y2="7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                                  <line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                                  <line x1="4" y1="17" x2="20" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                                               </svg>
                                           </i>
                                           <span className="is_blind">전체메뉴 펼치기</span>
