@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import './branch.css';
 
-const TOTAL_MS = 6500;
+const TOTAL_MS = 3000;
 const INTERACTION_POINT = 0.72;
 
 const scenes = [
