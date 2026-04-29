@@ -1,22 +1,44 @@
 .scroll3d {
+  /* 색상 변수 정의 */
   --white: #f8f8f8;
   --soft-white: rgba(255, 255, 255, 0.72);
   --dim-white: rgba(255, 255, 255, 0.24);
   --faint-white: rgba(255, 255, 255, 0.08);
-  --deep-blue: #031c3d;
-  --abyss-blue: #020b1c;
+  --deep-blue: #020b1c;
+  --abyss-blue: #0058ca;
+
+  /* 레이아웃 설정 */
   position: fixed;
   inset: 0;
   z-index: 1000;
-  width: 100%;
-  height: 100vh;
-  height: 100dvh;
-  min-height: 100vh;
-  min-height: 100dvh;
+  width: 100vw; /* 전체 너비 */
+  height: 100dvh; /* 모바일 대응 동적 높이 */
   margin: 0;
+  overflow: hidden; /* 배경 고정 및 스크롤 관리용 */
+
+  /* 텍스트 스타일 */
   color: var(--white);
-  background: #00040b;
   font-family: Arial, Helvetica, sans-serif;
+
+background: #000 !important;
+}
+
+.scroll3d__viewport {
+  /* ... 기존 속성 유지 ... */
+
+  background:
+    /* 1. 스크롤 진행도(--progress)에 따라 전체를 까맣게 물들이는 덮개 */
+    linear-gradient(
+      rgba(0, 0, 0, var(--progress, 0)),
+      rgba(0, 0, 0, var(--progress, 0))
+    ),
+    /* 2. 도넛 현상 없는 심해 배경 (가운데가 파랗고 바깥으로 갈수록 완전 블랙) */
+    radial-gradient(
+      circle at 50% 50%,
+      var(--abyss-blue) 0%,   /* 중앙: 빛이 닿는 파란색 */
+      var(--deep-blue) 100%,   /* 중간: 어두운 남색 */
+      #000000 130%            /* 외곽: 완전한 심연 (블랙) */
+    ) !important;
 }
 
 html:has(.scroll3d),
@@ -30,7 +52,6 @@ body:has(.scroll3d),
   background: #000;
 }
 
-/* 전체 화면을 덮는 실제 인터랙션 영역입니다. */
 .scroll3d__viewport {
   position: relative;
   z-index: 1;
@@ -45,12 +66,10 @@ body:has(.scroll3d),
     env(safe-area-inset-left, 0);
   touch-action: none;
   cursor: grab;
-  background:
-    linear-gradient(rgba(0, 0, 0, calc(var(--progress, 0) * 0.82)), rgba(0, 0, 0, calc(var(--progress, 0) * 0.94))),
-    radial-gradient(ellipse at 52% 48%, rgba(0, 0, 0, calc(0.12 + var(--progress, 0) * 0.58)) 0%, rgba(0, 8, 28, calc(0.08 + var(--progress, 0) * 0.42)) 34%, transparent 70%),
-    radial-gradient(ellipse at 42% 38%, rgba(82, 196, 255, calc(0.34 - var(--progress, 0) * 0.3)) 0%, rgba(0, 118, 196, calc(0.22 - var(--progress, 0) * 0.2)) 38%, transparent 74%),
-    radial-gradient(ellipse at 68% 72%, rgba(0, 82, 148, calc(0.26 - var(--progress, 0) * 0.16)) 0%, rgba(0, 22, 58, calc(0.42 + var(--progress, 0) * 0.2)) 56%, transparent 86%),
-    linear-gradient(135deg, #0877ad 0%, #044272 28%, #011b40 54%, #000817 78%, #000 100%);
+
+  /* 수정 포인트: 배경을 투명하게 만들어서 부모(.scroll3d)의 그라데이션이 보이게 함 */
+  background: transparent; 
+  
   user-select: none;
 }
 
