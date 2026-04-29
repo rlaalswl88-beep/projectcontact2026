@@ -6,6 +6,8 @@
   --faint-white: rgba(255, 255, 255, 0.08);
   --deep-blue: #020b1c;
   --abyss-blue: #0058ca;
+  --water-drag: 0;
+  --restore-pull: 0;
 
   /* 레이아웃 설정 */
   position: fixed;
@@ -81,13 +83,32 @@ body:has(.scroll3d),
   z-index: 4;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 50% 50%, transparent 0 46%, rgba(0, 8, 24, calc(0.24 + var(--progress, 0) * 0.24)) 72%, rgba(0, 0, 0, calc(0.58 + var(--progress, 0) * 0.34)) 100%),
-    linear-gradient(rgba(0, 0, 0, calc(var(--progress, 0) * 0.38)), rgba(0, 0, 0, calc(var(--progress, 0) * 0.68)));
+    radial-gradient(ellipse at 50% 50%, transparent 0 46%, rgba(0, 8, 24, calc(0.24 + var(--progress, 0) * 0.24)) 72%, rgba(0, 0, 0, calc(0.58 + var(--progress, 0) * 0.34)) 100%), /* 0.24/0.34를 올리면 스크롤이 깊어질수록 가장자리 어둠이 강해집니다. */
+    linear-gradient(rgba(0, 0, 0, calc(var(--progress, 0) * 0.38)), rgba(0, 0, 0, calc(var(--progress, 0) * 0.68))), /* 0.38/0.68을 올리면 전체 화면이 더 빨리 어두워집니다. */
+    radial-gradient(ellipse at 50% 46%, rgba(130, 205, 255, calc(var(--restore-pull, 0) * 0.18)), transparent 42%); /* 0.18은 클릭 복귀 중 중앙 푸른 빛 강도입니다. */
   opacity: 1;
 }
 
 .scroll3d__viewport::before {
-  display: none;
+  content: '';
+  position: absolute;
+  inset: -8%;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 50%, transparent 0 26%, rgba(90, 190, 255, calc(var(--water-drag, 0) * 0.2)) 48%, transparent 70%), /* 0.08은 마우스/스크롤 저항 때 보이는 물결 빛 강도입니다. */
+    repeating-linear-gradient(
+      96deg,
+      transparent 0 34px,
+      rgba(180, 230, 255, calc(var(--restore-pull, 0) * 0.055)) 35px 37px, /* 0.055는 복귀 중 지나가는 물살 선의 밝기입니다. */
+      transparent 38px 82px
+    );
+  filter: blur(calc(8px + var(--water-drag, 0) * 8px)); /* 앞 8px는 기본 퍼짐, 뒤 8px는 저항이 강할 때 추가 퍼짐입니다. */
+  mix-blend-mode: screen;
+  opacity: calc(var(--water-drag, 0) * 0.45 + var(--restore-pull, 0) * 0.7); /* 0.45는 평소 저항감, 0.7은 클릭 복귀 연출의 오버레이 강도입니다. */
+  transform:
+    translateY(calc(var(--restore-pull, 0) * -3.5%)) /* -3.5%는 복귀 중 물살이 위로 밀리는 정도입니다. */
+    scale(calc(1 + var(--water-drag, 0) * 0.035 + var(--restore-pull, 0) * 0.08)); /* 0.035/0.08은 저항/복귀 때 화면 압축감입니다. */
 }
 
 .scroll3d__viewport:active {
@@ -95,6 +116,24 @@ body:has(.scroll3d),
 }
 
 /* 상단 제목과 현재 가상 스크롤 진행률 표시입니다. */
+/* 스크롤/마우스 입력 때만 보이는 수중 굴절 레이어입니다.
+   밝기는 rgba 안의 0.08, 0.065, 0.22 / 전체 강도는 opacity의 0.62, 0.76을 조절하면 됩니다. */
+.scroll3d__viewport::before {
+  inset: -6%;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(205, 242, 255, calc(var(--water-drag, 0) * 0.12)) 0 18%, rgba(95, 190, 255, calc(var(--water-drag, 0) * 0.2)) 34%, transparent 66%),
+    radial-gradient(ellipse at 50% 50%, transparent 0 34%, rgba(0, 18, 42, calc(var(--water-drag, 0) * 0.24 + var(--restore-pull, 0) * 0.18)) 74%, rgba(0, 0, 0, calc(var(--water-drag, 0) * 0.22)) 100%),
+    radial-gradient(ellipse at 50% 46%, rgba(170, 230, 255, calc(var(--restore-pull, 0) * 0.22)), transparent 46%);
+  background-size: 100% 100%;
+  filter: blur(calc(7px + var(--water-drag, 0) * 5px));
+  opacity: calc(var(--water-drag, 0) * 0.72 + var(--restore-pull, 0) * 0.52);
+  transform:
+    translate3d(0, calc(var(--restore-pull, 0) * -2.5%), 0)
+    scaleX(calc(1 + var(--water-drag, 0) * 0.045))
+    scaleY(calc(1 + var(--water-drag, 0) * 0.025 + var(--restore-pull, 0) * 0.045));
+  will-change: opacity, transform;
+}
+
 .scroll3d__hud {
   position: absolute;
   z-index: 6;
@@ -209,10 +248,19 @@ body:has(.scroll3d),
 .scroll3d__camera {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 5;
   perspective: 760px;
   perspective-origin: 50% 50%;
   pointer-events: none;
+  filter:
+    blur(calc(var(--water-drag, 0) * 0.35px + var(--restore-pull, 0) * 0.2px)) /* 0.35/0.2는 저항/복귀 때 3D 오브젝트가 흐려지는 정도입니다. 텍스트가 계속 흐리면 이 값을 더 낮추세요. */
+    saturate(calc(1 + var(--water-drag, 0) * 0.22)) /* 0.22는 물 저항 중 색이 진해지는 정도입니다. */
+    brightness(calc(1 + var(--restore-pull, 0) * 0.12)); /* 0.12는 복귀 중 화면이 밝아지는 정도입니다. */
+  transform:
+    translate3d(0, calc(var(--restore-pull, 0) * -18px), 0) /* -18px는 복귀 중 카메라 레이어가 위로 들리는 정도입니다. */
+    scale(calc(1 + var(--water-drag, 0) * 0.012 + var(--restore-pull, 0) * 0.018)); /* 0.012/0.018은 저항/복귀 때 화면 확대감입니다. */
+  transform-origin: 50% 50%;
+  will-change: filter, transform;
 }
 
 /* 마지막 Connection Point는 3D transform 때문에 클릭 판정이 불안정할 수 있습니다.
@@ -252,6 +300,7 @@ body:has(.scroll3d),
   height: 1px;
   transform-style: preserve-3d;
   transform:
+    translateY(calc(var(--restore-pull, 0) * -36px)) /* -36px는 복귀 중 3D 세계가 위로 끌려가는 정도입니다. */
     rotateX(calc(var(--look-y) * 1))
     rotateY(calc(var(--look-x) * -1))
     translateZ(var(--camera-z));
@@ -275,7 +324,7 @@ body:has(.scroll3d),
 .scroll3d__bubbles {
   position: absolute;
   inset: 0;
-  z-index: 5;
+  z-index: 4;
   width: 100%;
   height: 100%;
   pointer-events: none;
@@ -346,63 +395,230 @@ body:has(.scroll3d),
   transform: translateZ(-5100px) rotateY(24deg);
 }
 
+.scroll3d__headline {
+  position: absolute;
+  top: calc(50% + var(--headline-y));
+  left: calc(50% + var(--headline-x));
+  display: grid;
+  width: clamp(600px, 80vw, 1200px); /* 헤드라인이 가로로 차지하는 박스 폭입니다. 앞 480px=최소폭, 46vw=화면 비례폭, 뒤 780px=최대폭입니다. */
+  color: var(--white);
+  opacity: calc(var(--reveal, 0) * (1 - var(--restore-pull, 0) * 0.72));
+  filter:
+    blur(calc((1 - var(--reveal, 0)) * 0.9px + var(--restore-pull, 0) * 8px))
+    brightness(calc(1 - var(--restore-pull, 0) * 0.22));
+  transform-style: preserve-3d;
+  transform:
+    translate(-50%, -50%)
+    translateY(calc(var(--restore-pull, 0) * -42px))
+    translateZ(var(--headline-z))
+    rotateY(var(--headline-rotate));
+  transition: opacity 120ms ease-out;
+  will-change: opacity, filter, transform;
+}
+
+.scroll3d__headline--left {
+  text-align: center;
+  justify-items: center;
+}
+
+.scroll3d__headline--right {
+  text-align: center;
+  justify-items: center;
+}
+
+.scroll3d__headline strong {
+  max-width: 100%;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: clamp(70px, 3.15vw, 100px); /* 헤드라인 텍스트 크기입니다. 앞 30px=최소, 가운데 3.15vw=화면 비례, 뒤 54px=최대 크기입니다. */
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-wrap: balance;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  text-shadow: 0 0 18px rgba(0, 0, 0, 0.42);
+  transform: scaleX(1); /* 글자 자체의 가로 비율입니다. 0.9는 좁게, 1.1은 넓게 보입니다. */
+  transform-origin: center;
+}
+
 /* 마지막 도착 지점입니다. 실제 클릭은 .scroll3d__destination-hit가 처리합니다. */
+.scroll3d__abyss-light {
+  position: absolute;
+  z-index: 7;
+  left: 50%;
+  top: 50%;
+  width: clamp(180px, 30vw, 340px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: var(--reveal, 0);
+  overflow: visible;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(calc(0.72 + var(--reveal, 0) * 0.24));
+  filter: blur(calc((1 - var(--reveal, 0)) * 7px)) brightness(1.08);
+  mix-blend-mode: screen;
+  will-change: opacity, transform, filter;
+}
+
+.scroll3d__abyss-light::before {
+  content: '';
+  position: absolute;
+  inset: -8%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, calc(var(--reveal, 0) * 0.32)) 0 5%, transparent 18%),
+    url('/img/B/abyss-glow.gif') center / contain no-repeat;
+  opacity: calc(var(--reveal, 0) * 0.72);
+  filter: blur(1.2px) brightness(1.45) contrast(1.12);
+  mix-blend-mode: screen;
+  transition: opacity 260ms ease, transform 260ms ease, filter 260ms ease;
+}
+
+.scroll3d__abyss-light::after {
+  display: none;
+}
+
+.scroll3d__abyss-light span {
+  position: relative;
+  z-index: 1;
+  width: clamp(16px, 2.8vw, 28px);
+  height: clamp(16px, 2.8vw, 28px);
+  display: block;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.82) 0 18%, rgba(206, 248, 255, 0.68) 34%, rgba(102, 206, 255, 0.24) 58%, transparent 74%);
+  opacity: calc(var(--reveal, 0) * 0.74);
+  mix-blend-mode: screen;
+  filter: blur(1px);
+  transform: scale(calc(0.94 + var(--restore-pull, 0) * 0.1));
+  box-shadow:
+    0 0 22px rgba(255, 255, 255, calc(var(--reveal, 0) * 0.42)),
+    0 0 62px rgba(145, 232, 255, calc(var(--reveal, 0) * 0.32)),
+    0 0 132px rgba(76, 165, 255, calc(var(--reveal, 0) * 0.18));
+  transition: opacity 260ms ease, filter 260ms ease, box-shadow 260ms ease, transform 260ms ease;
+}
+
+.scroll3d__abyss-light span::before,
+.scroll3d__abyss-light span::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: clamp(120px, 24vw, 260px);
+  height: 1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(210, 248, 255, calc(var(--reveal, 0) * 0.7)), transparent);
+  transform: translate(-50%, -50%);
+  filter: blur(1.4px);
+  opacity: 0.58;
+  transition: opacity 260ms ease, filter 260ms ease;
+}
+
+.scroll3d__abyss-light span::after {
+  width: clamp(90px, 18vw, 190px);
+  transform: translate(-50%, -50%) rotate(78deg);
+  opacity: 0.8;
+}
+
+.scroll3d__destination-hit[data-visible='true']:hover + .scroll3d__abyss-light::before,
+.scroll3d__destination-hit[data-visible='true']:focus-visible + .scroll3d__abyss-light::before {
+  opacity: 1;
+  transform: scale(1.08);
+  filter: blur(0.4px) brightness(1.95) contrast(1.18);
+}
+
+.scroll3d__destination-hit[data-visible='true']:hover + .scroll3d__abyss-light span,
+.scroll3d__destination-hit[data-visible='true']:focus-visible + .scroll3d__abyss-light span {
+  opacity: var(--reveal, 0);
+  filter: blur(0.7px);
+  transform: scale(calc(1.02 + var(--restore-pull, 0) * 0.1));
+  box-shadow:
+    0 0 26px rgba(255, 255, 255, calc(var(--reveal, 0) * 0.64)),
+    0 0 80px rgba(145, 232, 255, calc(var(--reveal, 0) * 0.54)),
+    0 0 180px rgba(76, 165, 255, calc(var(--reveal, 0) * 0.32));
+}
+
+.scroll3d__destination-hit[data-visible='true']:hover + .scroll3d__abyss-light span::before,
+.scroll3d__destination-hit[data-visible='true']:focus-visible + .scroll3d__abyss-light span::before,
+.scroll3d__destination-hit[data-visible='true']:hover + .scroll3d__abyss-light span::after,
+.scroll3d__destination-hit[data-visible='true']:focus-visible + .scroll3d__abyss-light span::after {
+  opacity: 0.92;
+  filter: blur(0.7px);
+}
+
 .scroll3d__destination {
-  left: -210px;
-  top: -150px;
-  width: 420px;
+  left: -24px;
+  top: -24px;
+  width: 48px;
+  height: 48px;
   place-items: center;
   text-align: center;
   color: var(--white);
-  transform: translateZ(-7600px);
+  filter: blur(calc((1 - var(--reveal, 0)) * 20px));
+  transform: translateZ(-9800px);
 }
 
 .scroll3d__destination span {
-  width: 120px;
-  height: 120px;
-  background: radial-gradient(circle, var(--white) 0 3px, transparent 4px);
-  box-shadow: 0 0 90px rgba(255, 255, 255, 0.62);
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--white) 0 4px, rgba(205, 238, 255, 0.58) 7px, transparent 14px);
+  box-shadow:
+    0 0 42px rgba(255, 255, 255, 0.78),
+    0 0 130px rgba(150, 215, 255, 0.44),
+    0 0 260px rgba(130, 205, 255, 0.24);
 }
 
 /* 92% 이후 도착 지점이 두 번 반짝입니다. 클릭 가능한 타이밍을 시각적으로 알려줍니다. */
 .scroll3d__destination[data-active='true'] span {
-  animation: scroll3d-pulse 880ms ease-out 2;
+  animation: scroll3d-abyss-signal 980ms ease-out 1s 2;
 }
 
-.scroll3d__destination[data-active='true'] strong {
-  animation: scroll3d-word-flare 880ms ease-out 2;
-}
-
-@keyframes scroll3d-pulse {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 90px rgba(255, 255, 255, 0.62);
-  }
-
-  38% {
-    transform: scale(1.16);
-    box-shadow:
-      0 0 28px rgba(255, 255, 255, 1),
-      0 0 120px rgba(255, 255, 255, 0.94),
-      0 0 220px rgba(255, 255, 255, 0.36);
-  }
-
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 90px rgba(255, 255, 255, 0.62);
-  }
-}
-
-@keyframes scroll3d-word-flare {
+@keyframes scroll3d-abyss-rays {
   0%,
   100% {
-    opacity: 1;
-    text-shadow: none;
+    transform: rotate(-3deg) scale(1);
+    opacity: calc(var(--reveal, 0) * 0.72);
   }
 
-  38% {
+  48% {
+    transform: rotate(4deg) scale(1.08);
+    opacity: var(--reveal, 0);
+  }
+}
+
+@keyframes scroll3d-abyss-signal {
+  0% {
+    transform: scale(1) rotate(-4deg);
+    opacity: calc(var(--reveal, 0) * 0.86);
+    filter: brightness(1);
+  }
+
+  42% {
+    transform: scale(1.16) rotate(2deg);
     opacity: 1;
-    text-shadow: 0 0 26px rgba(255, 255, 255, 0.9);
+    filter: brightness(1.55) blur(4px);
+  }
+
+  100% {
+    transform: scale(1) rotate(-4deg);
+    opacity: calc(var(--reveal, 0) * 0.9);
+    filter: brightness(1);
+  }
+}
+
+@keyframes scroll3d-ray-shiver {
+  0%,
+  100% {
+    opacity: 0.72;
+    filter: blur(0.8px);
+  }
+
+  42% {
+    opacity: 1;
+    filter: blur(0.2px);
   }
 }
 
@@ -469,6 +685,15 @@ body:has(.scroll3d),
 
   .scroll3d__chapter--two {
     left: 92px;
+  }
+
+  .scroll3d__headline {
+    width: min(78vw, 430px); /* 모바일 헤드라인 박스 폭입니다. 78vw를 줄이면 줄바꿈이 빨라지고, 430px을 키우면 최대 폭이 넓어집니다. */
+  }
+
+  .scroll3d__headline strong {
+    font-size: 28px; /* 모바일 헤드라인 텍스트 크기입니다. 앱 화면에서 너무 작거나 크면 이 값을 조정하세요. */
+    line-height: 1.14;
   }
 
   .scroll3d__chapter strong,
