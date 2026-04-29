@@ -1,8 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import './branch.css';
 
 const TOTAL_MS = 3000;
 const INTERACTION_POINT = 0.72;
+
+/** public/video 기준. 씬에 `video: '파일명.mp4'` 또는 `video: false`(그라데이션만) */
+const DEFAULT_VIDEO_FILE = 'scene1.mp4';
+
+function videoUrlForScene(scene) {
+  if (scene.video === false) {
+    return null;
+  }
+  const name = scene.video ?? DEFAULT_VIDEO_FILE;
+  const base = import.meta.env.BASE_URL || '/';
+  const prefix = base.endsWith('/') ? base : `${base}/`;
+  return `${prefix}video/${encodeURIComponent(name)}`;
+}
 
 const scenes = [
   { id: 1, title: '프롤로그', narration: '최근 하루가 반복된다.', interaction: { type: 'none' } },
@@ -151,8 +164,12 @@ function getProgress(ms) {
 }
 
 export default function Branch() {
+  const videoRef = useRef(null);
+  const pausedForChoiceRef = useRef(false);
+
   const [sceneIndex, setSceneIndex] = useState(0);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [videoProgress, setVideoProgress] = useState(0);
   const [answers, setAnswers] = useState({});
   const [draft, setDraft] = useState('');
   const [showPanel, setShowPanel] = useState(false);
@@ -161,18 +178,25 @@ export default function Branch() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const scene = scenes[sceneIndex];
-  const progress = getProgress(elapsedMs);
+  const videoSrc = useMemo(() => videoUrlForScene(scene), [scene]);
+
+  const progress = videoSrc ? Math.min(100, Math.round(videoProgress)) : getProgress(elapsedMs);
   const isLastScene = sceneIndex === scenes.length - 1;
   const canAutoNext = scene.interaction.type === 'none';
 
   useEffect(() => {
     setElapsedMs(0);
+    setVideoProgress(0);
+    pausedForChoiceRef.current = false;
     setDraft(answers[scene.interaction.key] || '');
     setShowPanel(false);
     setErrorMessage('');
   }, [sceneIndex, answers, scene.interaction.key]);
 
   useEffect(() => {
+    if (videoSrc) {
+      return undefined;
+    }
     const timer = window.setInterval(() => {
       setElapsedMs((prev) => {
         const next = Math.min(TOTAL_MS, prev + 100);
@@ -184,9 +208,12 @@ export default function Branch() {
     }, 100);
 
     return () => window.clearInterval(timer);
-  }, [sceneIndex, showPanel]);
+  }, [sceneIndex, showPanel, videoSrc]);
 
   useEffect(() => {
+    if (videoSrc) {
+      return undefined;
+    }
     if (!canAutoNext || !showPanel) {
       return undefined;
     }
@@ -199,7 +226,58 @@ export default function Branch() {
     }
 
     return undefined;
-  }, [elapsedMs, canAutoNext, showPanel]);
+  }, [elapsedMs, canAutoNext, showPanel, videoSrc]);
+
+  useEffect(() => {
+    if (!videoSrc) {
+      return undefined;
+    }
+    const v = videoRef.current;
+    if (!v) {
+      return undefined;
+    }
+
+    const sync = () => {
+      const d = v.duration;
+      if (!d || !Number.isFinite(d)) {
+        return;
+      }
+      const pct = Math.min(100, (v.currentTime / d) * 100);
+      setVideoProgress(pct);
+
+      if (pct >= INTERACTION_POINT * 100) {
+        setShowPanel(true);
+      }
+
+      if (
+        scene.interaction.type !== 'none' &&
+        v.currentTime >= d * INTERACTION_POINT &&
+        !pausedForChoiceRef.current
+      ) {
+        pausedForChoiceRef.current = true;
+        v.pause();
+      }
+    };
+
+    const onEnded = () => {
+      setVideoProgress(100);
+      setShowPanel(true);
+      if (scene.interaction.type === 'none') {
+        window.setTimeout(() => {
+          setSceneIndex((prev) => Math.min(prev + 1, scenes.length - 1));
+        }, 500);
+      }
+    };
+
+    v.addEventListener('timeupdate', sync);
+    v.addEventListener('ended', onEnded);
+    v.play().catch(() => {});
+
+    return () => {
+      v.removeEventListener('timeupdate', sync);
+      v.removeEventListener('ended', onEnded);
+    };
+  }, [sceneIndex, videoSrc, scene.interaction.type]);
 
   const responseCount = useMemo(
     () => Object.keys(answers).filter((key) => answers[key]).length,
@@ -278,6 +356,17 @@ export default function Branch() {
       </header>
 
       <div className="stepa-player__video">
+        {videoSrc ? (
+          <video
+            key={sceneIndex}
+            ref={videoRef}
+            className="stepa-player__video-el"
+            src={videoSrc}
+            playsInline
+            muted
+            preload="auto"
+          />
+        ) : null}
         <div className="stepa-player__video-overlay">
           <p className="stepa-player__scene-title">{scene.title}</p>
           <p className="stepa-player__scene-copy">{scene.narration}</p>
