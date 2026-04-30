@@ -17,6 +17,7 @@ const BUBBLE_FAR_Z = -92;
 const BUBBLE_NEAR_Z = 5;
 const POINTER_LOCK_RELEASE_MOTION = 8;
 const RESTORE_EFFECT_DURATION_MS = 3000;
+const HEADLINE_FLASH_DURATION_MS = 620;
 const ACTIVE_GENERATION = "YB";
 
 function clamp(value, min, max) {
@@ -319,12 +320,16 @@ function Scrolling() {
   const isRestoringRef = useRef(false);
   const restoreStartRef = useRef(0);
   const restoreFromRef = useRef(0);
+  const visibleHeadlineIdsRef = useRef(new Set());
+  const headlineFlashTimeoutsRef = useRef(new Map());
 
   const [scrollProgress, setScrollProgress] = useState(0);
   const [look, setLook] = useState({ x: 0, y: 0 });
   const [motionFx, setMotionFx] = useState({ drag: 0, restore: 0, idle: 1 });
   const [gyroEnabled, setGyroEnabled] = useState(false);
   const [generation] = useState(ACTIVE_GENERATION);
+  const [viewportGapX, setViewportGapX] = useState(0);
+  const [activeHeadlineFlashIds, setActiveHeadlineFlashIds] = useState(() => new Set());
   const [restoreEffectKey, setRestoreEffectKey] = useState(0);
   const [restoreEffectActive, setRestoreEffectActive] = useState(false);
   const destinationActive = scrollProgress > 0.955;
@@ -356,7 +361,65 @@ function Scrolling() {
   }, []);
 
   useEffect(() => {
-    return () => window.clearTimeout(restoreEffectTimeoutRef.current);
+    return () => {
+      window.clearTimeout(restoreEffectTimeoutRef.current);
+      headlineFlashTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    };
+  }, []);
+
+  useEffect(() => {
+    headlineItems.forEach((headline) => {
+      const reveal = revealWithHold(
+        scrollProgress,
+        headline.revealStart,
+        headline.revealFull,
+        headline.revealHold,
+        headline.revealEnd,
+      );
+      const wasVisible = visibleHeadlineIdsRef.current.has(headline.id);
+
+      if (reveal > 0.12 && !wasVisible) {
+        visibleHeadlineIdsRef.current.add(headline.id);
+        window.clearTimeout(headlineFlashTimeoutsRef.current.get(headline.id));
+
+        setActiveHeadlineFlashIds((current) => {
+          const next = new Set(current);
+          next.add(headline.id);
+          return next;
+        });
+
+        const timeoutId = window.setTimeout(() => {
+          headlineFlashTimeoutsRef.current.delete(headline.id);
+          setActiveHeadlineFlashIds((current) => {
+            if (!current.has(headline.id)) return current;
+
+            const next = new Set(current);
+            next.delete(headline.id);
+            return next;
+          });
+        }, HEADLINE_FLASH_DURATION_MS);
+
+        headlineFlashTimeoutsRef.current.set(headline.id, timeoutId);
+      }
+
+      if (reveal <= 0.02 && wasVisible) {
+        visibleHeadlineIdsRef.current.delete(headline.id);
+      }
+    });
+  }, [headlineItems, scrollProgress]);
+
+  useEffect(() => {
+    const syncViewportGap = () => {
+      const viewportWidth = viewportRef.current?.getBoundingClientRect().width || window.innerWidth;
+      const gap = Math.max(0, window.innerWidth - viewportWidth);
+
+      setViewportGapX((current) => (Math.abs(current - gap) < 0.5 ? current : gap));
+    };
+
+    syncViewportGap();
+    window.addEventListener("resize", syncViewportGap);
+
+    return () => window.removeEventListener("resize", syncViewportGap);
   }, []);
 
   useEffect(() => {
@@ -742,6 +805,7 @@ function Scrolling() {
     "--restore-pull": motionFx.restore,
     "--restore-progress": restoreProgressRef.current,
     "--idle-water": motionFx.idle,
+    "--viewport-gap-x": `${viewportGapX}px`,
   };
   const destinationStyle = { "--reveal": smoothstep(0.86, 0.975, scrollProgress) };
 
@@ -834,33 +898,31 @@ function Scrolling() {
               />
             ))}
 
-            {headlineItems.map((headline) => (
-              <article
-                className={`scroll3d__headline scroll3d__headline--${headline.side}`}
-                key={headline.id}
-                style={{
-                  ...headline.style,
-                  "--reveal": revealWithHold(
-                    scrollProgress,
-                    headline.revealStart,
-                    headline.revealFull,
-                    headline.revealHold,
-                    headline.revealEnd,
-                  ),
-                  "--flash": smoothstep(
-                    headline.revealStart,
-                    headline.revealFull,
-                    scrollProgress,
-                  ) * (1 - smoothstep(
-                    headline.revealFull,
-                    headline.revealFull + 0.035,
-                    scrollProgress,
-                  )),
-                }}
-              >
-                <strong>{headline.title}</strong>
-              </article>
-            ))}
+            {headlineItems.map((headline) => {
+              const reveal = revealWithHold(
+                scrollProgress,
+                headline.revealStart,
+                headline.revealFull,
+                headline.revealHold,
+                headline.revealEnd,
+              );
+              const flash = activeHeadlineFlashIds.has(headline.id);
+
+              return (
+                <article
+                  className={`scroll3d__headline scroll3d__headline--${headline.side}`}
+                  key={headline.id}
+                  data-flash={flash === 1}
+                  style={{
+                    ...headline.style,
+                    "--reveal": reveal,
+                    "--flash": 0,
+                  }}
+                >
+                  <strong>{headline.title}</strong>
+                </article>
+              );
+            })}
 
           </div>
         </div>
