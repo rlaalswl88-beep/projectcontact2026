@@ -6,19 +6,17 @@ import "./Scrolling.css";
 import { Environment } from '@react-three/drei';
 import headlineData from "./B_deta.json";
 
-
 const DEPTH = 12800;
-const DRAG_LIMIT = 45; // 정면 기준 좌우 시야 회전 한계입니다. 45면 왼쪽/오른쪽 각각 45도까지 봅니다.
-const LOOK_TARGET_FOLLOW = 0.07; // 마우스 위치로 목표 시선이 따라가는 속도입니다. 낮추면 수막 저항처럼 더 무겁습니다.
-const LOOK_RENDER_FOLLOW = 0.04; // 실제 화면 시선이 목표 시선을 따라가는 속도입니다. 낮추면 휙 도는 느낌이 줄어듭니다.
-// 마지막 지점 클릭 후 위로 복귀하는 속도입니다.
-// 값을 키우면 빠르게 끌려 올라가고, 낮추면 천천히 따라 올라갑니다.
-// 마지막 지점 클릭 후 수면 쪽으로 끌려 올라오는 전체 연출 시간입니다.
-// 깊은 곳에서 빠져나오는 느낌을 유지하려고 최소 5초 이상으로 잡았습니다.
-const RESTORE_DURATION_MS = 5000; // 클릭 복귀 전체 시간(ms). 크게 하면 더 깊은 곳에서 천천히 끌려 올라옵니다.
+const DRAG_LIMIT = 45;
+const LOOK_TARGET_FOLLOW = 0.07;
+const LOOK_RENDER_FOLLOW = 0.04;
+
+const RESTORE_DURATION_MS = 5000;
 const BUBBLE_COUNT = 86;
 const BUBBLE_FAR_Z = -92;
 const BUBBLE_NEAR_Z = 5;
+const POINTER_LOCK_RELEASE_MOTION = 8;
+const RESTORE_EFFECT_DURATION_MS = 3000;
 const ACTIVE_GENERATION = "YB";
 
 function clamp(value, min, max) {
@@ -187,49 +185,35 @@ function Bubbles({ scrollVelocityRef, scrollInputRef, pointerMotionRef }) {
     const wheelInput = scrollInputRef?.current || 0;
     const pointerMotion = pointerMotionRef?.current || 0;
 
-    // 물방울 발생 조건을 정하는 입력 세기입니다.
-    // scrollDelta: drei ScrollControls의 실제 스크롤 변화량
-    // virtualVelocity: 이 컴포넌트에서 쓰는 가상 스크롤 속도
-    // wheelInput: 휠/터치/키보드 입력이 들어온 순간을 직접 누적한 값입니다. 전 구간 반응 보강용입니다.
-    // pointerMotion: 마우스를 움직였을 때 생기는 물속 흔들림
-    // 각 곱셈 수치를 올리면 작은 입력에도 물방울이 더 쉽게 나오고, 낮추면 더 강하게 움직여야 나옵니다.
     const inputPower = clamp(
-      scrollDelta * 4 + // drei ScrollControls 감도입니다. 올리면 내부 스크롤 반응이 더 강해집니다.
-        virtualVelocity * 48 + // 실제 화면 진행 속도 감도입니다. 올리면 스크롤 중 기포가 더 쉽게 나옵니다.
-        wheelInput * 2.8 + // 휠/터치 입력 감도입니다. 느린 스크롤에도 기포를 보이게 하려면 이 값을 올리세요.
-        pointerMotion * 0.32, // 마우스 움직임 감도입니다. 올리면 마우스만 움직여도 기포 반응이 커집니다.
+      scrollDelta * 4 +
+        virtualVelocity * 48 +
+        wheelInput * 2.8 +
+        pointerMotion * 0.32,
       0,
       1,
     );
 
-    // inputPower가 0.015 아래면 거의 반응하지 않고, 0.16 이상이면 충분히 보입니다.
-    // 더 빨리 나오게 하려면 0.015/0.16을 낮추고, 더 늦게 나오게 하려면 높이면 됩니다.
-    const targetEnergy = smoothstep(0.03, 0.3, inputPower); // 앞 숫자는 발생 시작점, 뒤 숫자는 최대치 도달점입니다. 둘 다 낮추면 더 쉽게 보입니다.
+    const targetEnergy = smoothstep(0.03, 0.3, inputPower);
 
-    // 물방울이 바로 번쩍 켜지지 않게 지연시키는 값입니다.
-    // 0.035는 켜질 때 속도, 0.018은 사라질 때 속도입니다. 값을 키우면 반응이 빨라집니다.
-    const energyLerp = targetEnergy > bubbleEnergyRef.current ? 0.075 : 0.03; // 왼쪽은 기포가 켜지는 속도, 오른쪽은 사라지는 속도입니다.
+    const energyLerp = targetEnergy > bubbleEnergyRef.current ? 0.075 : 0.03;
     bubbleEnergyRef.current = lerp(
       bubbleEnergyRef.current,
       targetEnergy,
       energyLerp,
     );
 
-    // 실제 화면에 보이는 정도입니다.
-    // 0.025 아래에서는 숨고, 0.28 이상이면 거의 완전히 보입니다.
-    const visibility = smoothstep(0.025, 0.28, bubbleEnergyRef.current); // 기포 투명도 범위입니다. 낮추면 더 빨리/오래 보입니다.
+    const visibility = smoothstep(0.025, 0.28, bubbleEnergyRef.current);
 
-    // 기포가 Z축 깊은 곳에서 카메라 쪽으로 올라오는 속도입니다.
-    // 0.035는 기본 속도, 0.62는 입력이 강할 때 추가되는 가속량입니다.
-    const zAcceleration = 0.035 + bubbleEnergyRef.current * 0.62; // 앞 숫자는 기본 상승 속도, 뒤 숫자는 입력 시 추가 가속입니다.
+    const zAcceleration = 0.035 + bubbleEnergyRef.current * 0.62;
 
     mesh.visible = visibility > 0.01;
     if (!mesh.visible) return;
 
-    group.rotation.y = lerp(group.rotation.y, mouse.x * 0.18, 0.045); // 마우스 좌우 시선에 따른 기포 회전 강도/따라오는 속도입니다.
-    group.rotation.x = lerp(group.rotation.x, -mouse.y * 0.12, 0.045); // 마우스 상하 시선에 따른 기포 회전 강도/따라오는 속도입니다.
-    group.position.x = lerp(group.position.x, mouse.x * 0.55, 0.05); // 마우스 좌우 이동에 따른 기포층 밀림 강도/속도입니다.
-    group.position.y = lerp(group.position.y, mouse.y * 0.36, 0.05); // 마우스 상하 이동에 따른 기포층 밀림 강도/속도입니다.
+    group.rotation.y = lerp(group.rotation.y, mouse.x * 0.18, 0.045);
+    group.rotation.x = lerp(group.rotation.x, -mouse.y * 0.12, 0.045);
+    group.position.x = lerp(group.position.x, mouse.x * 0.55, 0.05);
+    group.position.y = lerp(group.position.y, mouse.y * 0.36, 0.05);
 
     bubbles.forEach((bubble, index) => {
       bubble.z += delta * bubble.speed * zAcceleration;
@@ -253,7 +237,7 @@ function Bubbles({ scrollVelocityRef, scrollInputRef, pointerMotionRef }) {
         bubble.drift *
         0.35;
       const radialPush = 1 + proximity * 1.85;
-      const scale = bubble.radius * (0.42 + proximity * 4.4) * visibility; // 가까워질수록 커지는 정도입니다. 4.4를 올리면 카메라 앞 기포가 더 커집니다.
+      const scale = bubble.radius * (0.42 + proximity * 4.4) * visibility;
 
       dummy.position.set(
         (bubble.x + driftX) * radialPush,
@@ -275,16 +259,16 @@ function Bubbles({ scrollVelocityRef, scrollInputRef, pointerMotionRef }) {
         args={[undefined, undefined, BUBBLE_COUNT]}
         frustumCulled={false}
       >
-        <sphereGeometry args={[1, 64, 64]} />
+        <sphereGeometry args={[1, 32, 32]} />
         <meshPhysicalMaterial
   color="#1a97c9"
   transparent={true}
-  opacity={0.2}          /* 투명도를 0.1 수준으로 확 낮춰서 뒷배경이 비치게 함 */
+  opacity={0.2}
   roughness={0}
-  metalness={0.1}        /* 금속성을 낮춰서 쇳덩이 같은 탁한 느낌을 없앰 */
-  clearcoat={1}          /* 유리 코팅 유지 */
+  metalness={0.1}
+  clearcoat={1}
   clearcoatRoughness={0}
-  envMapIntensity={2}  /* 반사광 강도를 살짝 낮춰서 자연스럽게 조절 */
+  envMapIntensity={2}
   depthWrite={false}
 />
       </instancedMesh>
@@ -297,15 +281,14 @@ function BubbleField({ scrollVelocityRef, scrollInputRef, pointerMotionRef }) {
     <Canvas
       className="scroll3d__bubbles"
       camera={{ position: [0, 0, 8], fov: 58, near: 0.1, far: 140 }}
+      dpr={[1, 1.5]}
       gl={{ alpha: true, antialias: true }}
     >
       <ambientLight intensity={0.1} />
       <pointLight position={[0, 3.2, 5]} intensity={4.6} color="#ffffff" />
-      {/* ... 나머지 조명 유지 ... */}
-      
-      {/* 이거 무조건 추가! (보이지 않는 빛들을 배치해서 물방울 겉면을 반짝이게 함) */}
+
       <Environment preset="night" blur={1} />
-      
+
       <ScrollControls pages={6} damping={0.18} style={{ scrollbarWidth: 'none' }}>
         <Bubbles scrollVelocityRef={scrollVelocityRef} scrollInputRef={scrollInputRef} pointerMotionRef={pointerMotionRef} />
       </ScrollControls>
@@ -319,9 +302,12 @@ function Scrolling() {
   const touchStartRef = useRef(null);
   const rafRef = useRef(0);
   const pointerPointRef = useRef(null);
+  const restoreEffectTimeoutRef = useRef(0);
 
   const targetLookRef = useRef({ x: 0, y: 0 });
   const desiredLookRef = useRef({ x: 0, y: 0 });
+  const latestPointerLookRef = useRef(null);
+  const pointerLookOverrideRef = useRef(false);
   const targetProgressRef = useRef(0);
   const scrollVelocityRef = useRef(0);
   const scrollInputRef = useRef(0);
@@ -329,6 +315,7 @@ function Scrolling() {
   const pendingTouchDeltaRef = useRef(0);
   const lookLockUntilRef = useRef(0);
   const pointerMotionRef = useRef(0);
+  const restoreProgressRef = useRef(0);
   const isRestoringRef = useRef(false);
   const restoreStartRef = useRef(0);
   const restoreFromRef = useRef(0);
@@ -338,6 +325,8 @@ function Scrolling() {
   const [motionFx, setMotionFx] = useState({ drag: 0, restore: 0 });
   const [gyroEnabled, setGyroEnabled] = useState(false);
   const [generation] = useState(ACTIVE_GENERATION);
+  const [restoreEffectKey, setRestoreEffectKey] = useState(0);
+  const [restoreEffectActive, setRestoreEffectActive] = useState(false);
   const destinationActive = scrollProgress > 0.955;
 
   const depthItems = useMemo(buildDepthItems, []);
@@ -348,16 +337,9 @@ function Scrolling() {
   );
 
   const addProgress = useCallback((delta) => {
-    if (Math.abs(delta) > 0.0001) {
-      // 스크롤 중에는 시선을 중앙으로 회수합니다. 옆을 본 상태로 내려가면 깊이 방향이 흐트러집니다.
-      desiredLookRef.current = { x: 0, y: 0 };
-      pointerPointRef.current = null;
-      lookLockUntilRef.current = performance.now() + 900;
-    }
-
     targetProgressRef.current = clamp(targetProgressRef.current + delta, 0, 1);
     scrollInputRef.current = clamp(
-      scrollInputRef.current + Math.abs(delta) * 44, // 스크롤 입력 누적 감도입니다. 올리면 느린 스크롤에도 물방울/저항감이 잘 반응합니다.
+      scrollInputRef.current + Math.abs(delta) * 44,
       0,
       1,
     );
@@ -374,15 +356,22 @@ function Scrolling() {
   }, []);
 
   useEffect(() => {
+    return () => window.clearTimeout(restoreEffectTimeoutRef.current);
+  }, []);
+
+  useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return undefined;
 
     const handleWheel = (event) => {
       event.preventDefault();
       desiredLookRef.current = { x: 0, y: 0 };
+      latestPointerLookRef.current = null;
+      pointerLookOverrideRef.current = false;
       pointerPointRef.current = null;
+      lookLockUntilRef.current = performance.now() + 900;
       pendingWheelDeltaRef.current = clamp(
-        pendingWheelDeltaRef.current + event.deltaY / 26000, // 휠 스크롤 감도입니다. 숫자를 키우면 더 천천히 내려갑니다.
+        pendingWheelDeltaRef.current + event.deltaY / 26000,
         -0.12,
         0.12,
       );
@@ -406,9 +395,12 @@ function Scrolling() {
       touchStartRef.current = currentY;
       event.preventDefault();
       desiredLookRef.current = { x: 0, y: 0 };
+      latestPointerLookRef.current = null;
+      pointerLookOverrideRef.current = false;
       pointerPointRef.current = null;
+      lookLockUntilRef.current = performance.now() + 900;
       pendingTouchDeltaRef.current = clamp(
-        pendingTouchDeltaRef.current + delta / 8200, // 모바일 터치 스크롤 감도입니다. 숫자를 키우면 더 천천히 내려갑니다.
+        pendingTouchDeltaRef.current + delta / 8200,
         -0.08,
         0.08,
       );
@@ -422,12 +414,18 @@ function Scrolling() {
       ) {
         event.preventDefault();
         desiredLookRef.current = { x: 0, y: 0 };
+        latestPointerLookRef.current = null;
+        pointerLookOverrideRef.current = false;
+        lookLockUntilRef.current = performance.now() + 900;
         pendingWheelDeltaRef.current = clamp(pendingWheelDeltaRef.current + 0.035, -0.12, 0.12);
       }
 
       if (event.key === "ArrowUp" || event.key === "PageUp") {
         event.preventDefault();
         desiredLookRef.current = { x: 0, y: 0 };
+        latestPointerLookRef.current = null;
+        pointerLookOverrideRef.current = false;
+        lookLockUntilRef.current = performance.now() + 900;
         pendingWheelDeltaRef.current = clamp(pendingWheelDeltaRef.current - 0.035, -0.12, 0.12);
       }
     };
@@ -449,28 +447,32 @@ function Scrolling() {
 
   useEffect(() => {
     const tick = (now = performance.now()) => {
-      pointerMotionRef.current = lerp(pointerMotionRef.current, 0, 0.045); // 마우스 움직임 잔상 감소 속도입니다. 낮추면 물 저항감이 오래 남습니다.
-      scrollInputRef.current = lerp(scrollInputRef.current, 0, 0.055); // 스크롤 입력 잔상 감소 속도입니다. 낮추면 기포/왜곡 반응이 오래 남습니다.
+      pointerMotionRef.current = lerp(pointerMotionRef.current, 0, 0.045);
+      scrollInputRef.current = lerp(scrollInputRef.current, 0, 0.055);
 
       if (Math.abs(pendingWheelDeltaRef.current) > 0.00001) {
-        const wheelStep = pendingWheelDeltaRef.current * 0.105; // 휠/키보드 관성값입니다. 낮추면 멈춘 뒤 더 천천히 가라앉습니다.
+        const wheelStep = pendingWheelDeltaRef.current * 0.105;
         pendingWheelDeltaRef.current -= wheelStep;
         addProgress(wheelStep);
       }
 
       if (Math.abs(pendingTouchDeltaRef.current) > 0.00001) {
-        const touchStep = pendingTouchDeltaRef.current * 0.105; // 터치 스크롤 지연값입니다. 낮추면 손가락 입력이 더 천천히 반영됩니다.
+        const touchStep = pendingTouchDeltaRef.current * 0.105;
         pendingTouchDeltaRef.current -= touchStep;
         addProgress(touchStep);
       }
 
-      if (
+      const shouldCenterLook =
         targetProgressRef.current > 0.9 ||
-        Math.abs(pendingWheelDeltaRef.current) > 0.0001 ||
-        Math.abs(pendingTouchDeltaRef.current) > 0.0001 ||
-        now < lookLockUntilRef.current
-      ) {
+        (!pointerLookOverrideRef.current &&
+          (Math.abs(pendingWheelDeltaRef.current) > 0.0001 ||
+            Math.abs(pendingTouchDeltaRef.current) > 0.0001 ||
+            now < lookLockUntilRef.current));
+
+      if (shouldCenterLook) {
         desiredLookRef.current = { x: 0, y: 0 };
+      } else if (latestPointerLookRef.current) {
+        desiredLookRef.current = latestPointerLookRef.current;
       }
 
       targetLookRef.current = {
@@ -480,8 +482,8 @@ function Scrolling() {
 
       setLook((current) => {
         const next = {
-          x: lerp(current.x, targetLookRef.current.x, LOOK_RENDER_FOLLOW), // 시선 좌우가 목표 시선을 따라가는 속도입니다.
-          y: lerp(current.y, targetLookRef.current.y, LOOK_RENDER_FOLLOW), // 시선 상하가 목표 시선을 따라가는 속도입니다.
+          x: lerp(current.x, targetLookRef.current.x, LOOK_RENDER_FOLLOW),
+          y: lerp(current.y, targetLookRef.current.y, LOOK_RENDER_FOLLOW),
         };
 
         if (
@@ -506,32 +508,33 @@ function Scrolling() {
             0,
             1,
           );
-          const easedRestore = easeInOutCubic(restoreProgress); // 복귀 가속 곡선입니다. 초반 느림, 중간 빠름, 마지막 감속 형태입니다.
+          const easedRestore = easeInOutCubic(restoreProgress);
           const next = lerp(restoreFromRef.current, 0, easedRestore);
 
           scrollVelocityRef.current = lerp(
             scrollVelocityRef.current,
             Math.abs(next - current),
-            0.24, // 복귀 중 속도값이 따라오는 정도입니다. 올리면 기포/왜곡이 복귀 속도에 더 민감합니다.
+            0.24,
           );
 
           if (restoreProgress >= 1) {
             isRestoringRef.current = false;
             restoreStartRef.current = 0;
             restoreFromRef.current = 0;
-            scrollVelocityRef.current = lerp(scrollVelocityRef.current, 0, 0.22); // 복귀 종료 후 잔여 속도 정리 속도입니다.
+            restoreProgressRef.current = 0;
+            scrollVelocityRef.current = lerp(scrollVelocityRef.current, 0, 0.22);
             return 0;
           }
 
           return next;
         }
 
-        const speed = 0.043; // 일반 스크롤 진행 보간 속도입니다. 낮추면 더 묵직하고, 높이면 더 즉각적입니다.
+        const speed = 0.043;
         const next = lerp(current, targetProgressRef.current, speed);
         scrollVelocityRef.current = lerp(
           scrollVelocityRef.current,
           Math.abs(next - current),
-          0.32, // 일반 스크롤 속도값 반영 속도입니다. 올리면 물방울 반응이 더 즉각적입니다.
+          0.32,
         );
 
         if (Math.abs(next - current) < 0.0005) {
@@ -539,7 +542,7 @@ function Scrolling() {
             isRestoringRef.current = false;
           }
 
-          scrollVelocityRef.current = lerp(scrollVelocityRef.current, 0, 0.22); // 멈췄을 때 속도값이 사라지는 속도입니다.
+          scrollVelocityRef.current = lerp(scrollVelocityRef.current, 0, 0.22);
           return targetProgressRef.current;
         }
 
@@ -549,21 +552,22 @@ function Scrolling() {
       const restoreProgress = restoreStartRef.current
         ? clamp((now - restoreStartRef.current) / RESTORE_DURATION_MS, 0, 1)
         : 0;
+      restoreProgressRef.current = isRestoringRef.current ? restoreProgress : 0;
       const restorePull = isRestoringRef.current
-        ? clamp(Math.sin(restoreProgress * Math.PI) * 0.88 + (1 - restoreProgress) * 0.18, 0, 1) // 클릭 복귀 연출 강도입니다. 0.88은 중간 상승 압력, 0.18은 초반 당김입니다.
+        ? clamp(Math.sin(restoreProgress * Math.PI) * 0.88 + (1 - restoreProgress) * 0.18, 0, 1)
         : 0;
       const waterDrag = clamp(
-        pointerMotionRef.current * 0.82 + // 마우스 움직임이 물 저항감에 주는 비중입니다.
-          scrollInputRef.current * 0.5 + // 휠/터치 입력이 물 저항감에 주는 비중입니다.
-          scrollVelocityRef.current * 42, // 실제 진행 속도가 물 저항감에 주는 비중입니다.
+        pointerMotionRef.current * 0.82 +
+          scrollInputRef.current * 0.5 +
+          scrollVelocityRef.current * 42,
         0,
         1,
       );
 
       setMotionFx((current) => {
         const next = {
-          drag: lerp(current.drag, waterDrag, 0.1), // 물 저항 효과가 목표값을 따라가는 속도입니다. 낮추면 더 묵직하게 따라옵니다.
-          restore: lerp(current.restore, restorePull, restorePull > current.restore ? 0.18 : 0.06), // 복귀 효과가 켜질 때/꺼질 때 따라가는 속도입니다.
+          drag: lerp(current.drag, waterDrag, 0.1),
+          restore: lerp(current.restore, restorePull, restorePull > current.restore ? 0.18 : 0.06),
         };
 
         if (
@@ -614,12 +618,6 @@ function Scrolling() {
   };
 
   const handlePointerMove = (event) => {
-    if (performance.now() < lookLockUntilRef.current || targetProgressRef.current > 0.9) {
-      desiredLookRef.current = { x: 0, y: 0 };
-      pointerPointRef.current = null;
-      return;
-    }
-
     if (
       !dragStartRef.current &&
       event.pointerType === "mouse" &&
@@ -645,10 +643,31 @@ function Scrolling() {
         1,
       );
 
-      desiredLookRef.current = {
-        x: clamp(offsetX * -90, -DRAG_LIMIT, DRAG_LIMIT), // offsetX는 -0.5~0.5라서 90을 곱하면 좌우 최대 45도가 됩니다.
-        y: clamp(offsetY * -64, -36, 36), // 위아래 시야 범위입니다. 너무 어지러우면 36을 낮추면 됩니다.
+      const nextLook = {
+        x: clamp(offsetX * -90, -DRAG_LIMIT, DRAG_LIMIT),
+        y: clamp(offsetY * -64, -36, 36),
       };
+
+      latestPointerLookRef.current = nextLook;
+
+      if (motion > POINTER_LOCK_RELEASE_MOTION && targetProgressRef.current <= 0.9) {
+        pointerLookOverrideRef.current = true;
+        lookLockUntilRef.current = 0;
+      }
+
+      if (performance.now() < lookLockUntilRef.current || targetProgressRef.current > 0.9) {
+        desiredLookRef.current = { x: 0, y: 0 };
+        pointerPointRef.current = null;
+        return;
+      }
+
+      desiredLookRef.current = nextLook;
+      return;
+    }
+
+    if (performance.now() < lookLockUntilRef.current || targetProgressRef.current > 0.9) {
+      desiredLookRef.current = { x: 0, y: 0 };
+      pointerPointRef.current = null;
       return;
     }
 
@@ -682,12 +701,18 @@ function Scrolling() {
     event?.stopPropagation();
 
     desiredLookRef.current = { x: 0, y: 0 };
+    setRestoreEffectKey((key) => key + 1);
+    setRestoreEffectActive(true);
+    window.clearTimeout(restoreEffectTimeoutRef.current);
+    restoreEffectTimeoutRef.current = window.setTimeout(() => {
+      setRestoreEffectActive(false);
+    }, RESTORE_EFFECT_DURATION_MS);
     isRestoringRef.current = true;
     restoreStartRef.current = performance.now();
     restoreFromRef.current = scrollProgress;
     targetProgressRef.current = 0;
-    scrollInputRef.current = 1; // 클릭 순간 스크롤 입력 반응을 강제로 한 번 올립니다. 낮추면 복귀 시작 기포가 약해집니다.
-    pointerMotionRef.current = 0.8; // 클릭 순간 물 흔들림을 강제로 한 번 줍니다. 낮추면 시작 충격이 약해집니다.
+    scrollInputRef.current = 1;
+    pointerMotionRef.current = 0.8;
     window.scrollTo({ top: 0, behavior: "auto" });
   };
 
@@ -699,11 +724,13 @@ function Scrolling() {
     "--progress": scrollProgress,
     "--water-drag": motionFx.drag,
     "--restore-pull": motionFx.restore,
+    "--restore-progress": restoreProgressRef.current,
   };
   const viewportStyle = {
     "--progress": scrollProgress,
     "--water-drag": motionFx.drag,
     "--restore-pull": motionFx.restore,
+    "--restore-progress": restoreProgressRef.current,
   };
   const destinationStyle = { "--reveal": smoothstep(0.86, 0.975, scrollProgress) };
 
@@ -737,6 +764,16 @@ function Scrolling() {
           pointerMotionRef={pointerMotionRef}
         />
 
+        {restoreEffectActive && (
+          <div className="scroll3d__restore-effect" aria-hidden>
+            <img
+              key={restoreEffectKey}
+              src="/img/B/restore-suckit.webp"
+              alt=""
+            />
+          </div>
+        )}
+
         <button
           type="button"
           className="scroll3d__destination-hit"
@@ -757,6 +794,10 @@ function Scrolling() {
 
         <div className="scroll3d__camera" style={stageStyle} aria-hidden>
           <div className="scroll3d__world">
+            <div className="scroll3d__caustic scroll3d__caustic--near" />
+            <div className="scroll3d__caustic scroll3d__caustic--mid" />
+            <div className="scroll3d__caustic scroll3d__caustic--far" />
+
             <div className="scroll3d__vanish-line scroll3d__vanish-line--left" />
             <div className="scroll3d__vanish-line scroll3d__vanish-line--right" />
             <div className="scroll3d__floor">
