@@ -322,7 +322,7 @@ function Scrolling() {
 
   const [scrollProgress, setScrollProgress] = useState(0);
   const [look, setLook] = useState({ x: 0, y: 0 });
-  const [motionFx, setMotionFx] = useState({ drag: 0, restore: 0 });
+  const [motionFx, setMotionFx] = useState({ drag: 0, restore: 0, idle: 1 });
   const [gyroEnabled, setGyroEnabled] = useState(false);
   const [generation] = useState(ACTIVE_GENERATION);
   const [restoreEffectKey, setRestoreEffectKey] = useState(0);
@@ -563,16 +563,25 @@ function Scrolling() {
         0,
         1,
       );
+      const isInputSettled =
+        Math.abs(pendingWheelDeltaRef.current) < 0.00008 &&
+        Math.abs(pendingTouchDeltaRef.current) < 0.00008 &&
+        scrollInputRef.current < 0.04 &&
+        scrollVelocityRef.current < 0.0008 &&
+        !isRestoringRef.current;
+      const idleWater = isInputSettled ? 1 : 0;
 
       setMotionFx((current) => {
         const next = {
           drag: lerp(current.drag, waterDrag, 0.1),
           restore: lerp(current.restore, restorePull, restorePull > current.restore ? 0.18 : 0.06),
+          idle: lerp(current.idle, idleWater, idleWater > current.idle ? 0.035 : 0.16),
         };
 
         if (
           Math.abs(next.drag - current.drag) < 0.004 &&
-          Math.abs(next.restore - current.restore) < 0.004
+          Math.abs(next.restore - current.restore) < 0.004 &&
+          Math.abs(next.idle - current.idle) < 0.004
         ) {
           return current;
         }
@@ -725,12 +734,14 @@ function Scrolling() {
     "--water-drag": motionFx.drag,
     "--restore-pull": motionFx.restore,
     "--restore-progress": restoreProgressRef.current,
+    "--idle-water": motionFx.idle,
   };
   const viewportStyle = {
     "--progress": scrollProgress,
     "--water-drag": motionFx.drag,
     "--restore-pull": motionFx.restore,
     "--restore-progress": restoreProgressRef.current,
+    "--idle-water": motionFx.idle,
   };
   const destinationStyle = { "--reveal": smoothstep(0.86, 0.975, scrollProgress) };
 
@@ -757,6 +768,8 @@ function Scrolling() {
             style={{ transform: `scaleY(${Math.max(scrollProgress, 0.015)})` }}
           />
         </div>
+
+        <div className="scroll3d__idle-water" aria-hidden />
 
         <BubbleField
           scrollVelocityRef={scrollVelocityRef}
@@ -794,10 +807,6 @@ function Scrolling() {
 
         <div className="scroll3d__camera" style={stageStyle} aria-hidden>
           <div className="scroll3d__world">
-            <div className="scroll3d__caustic scroll3d__caustic--near" />
-            <div className="scroll3d__caustic scroll3d__caustic--mid" />
-            <div className="scroll3d__caustic scroll3d__caustic--far" />
-
             <div className="scroll3d__vanish-line scroll3d__vanish-line--left" />
             <div className="scroll3d__vanish-line scroll3d__vanish-line--right" />
             <div className="scroll3d__floor">
@@ -838,6 +847,15 @@ function Scrolling() {
                     headline.revealHold,
                     headline.revealEnd,
                   ),
+                  "--flash": smoothstep(
+                    headline.revealStart,
+                    headline.revealFull,
+                    scrollProgress,
+                  ) * (1 - smoothstep(
+                    headline.revealFull,
+                    headline.revealFull + 0.035,
+                    scrollProgress,
+                  )),
                 }}
               >
                 <strong>{headline.title}</strong>
