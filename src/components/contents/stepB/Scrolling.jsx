@@ -18,7 +18,38 @@ const BUBBLE_NEAR_Z = 5;
 const POINTER_LOCK_RELEASE_MOTION = 8;
 const RESTORE_EFFECT_DURATION_MS = 3000;
 const HEADLINE_FLASH_DURATION_MS = 620;
-const ACTIVE_GENERATION = "YB";
+const DEFAULT_GENERATION = "YB";
+const USER_INFO_COOKIE_KEY = "isolation_user_info";
+const VALID_GENERATIONS = new Set(["YB", "OB"]);
+
+function getCookieValue(key) {
+  if (typeof document === "undefined") return null;
+
+  return document.cookie
+    .split("; ")
+    .find((row) => row.startsWith(`${key}=`))
+    ?.split("=")
+    .slice(1)
+    .join("=") ?? null;
+}
+
+function getIsolationUserInfoFromCookie() {
+  const rawCookie = getCookieValue(USER_INFO_COOKIE_KEY);
+  if (!rawCookie) return null;
+
+  try {
+    return JSON.parse(decodeURIComponent(rawCookie));
+  } catch {
+    return null;
+  }
+}
+
+function getGenerationFromCookie() {
+  const userInfo = getIsolationUserInfoFromCookie();
+  const generation = userInfo?.generation;
+
+  return VALID_GENERATIONS.has(generation) ? generation : DEFAULT_GENERATION;
+}
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -327,7 +358,7 @@ function Scrolling() {
   const [look, setLook] = useState({ x: 0, y: 0 });
   const [motionFx, setMotionFx] = useState({ drag: 0, restore: 0, idle: 1 });
   const [gyroEnabled, setGyroEnabled] = useState(false);
-  const [generation] = useState(ACTIVE_GENERATION);
+  const [generation] = useState(getGenerationFromCookie);
   const [viewportGapX, setViewportGapX] = useState(0);
   const [activeHeadlineFlashIds, setActiveHeadlineFlashIds] = useState(() => new Set());
   const [restoreEffectKey, setRestoreEffectKey] = useState(0);
