@@ -112,7 +112,7 @@ export default function Branch() {
     setElapsedMs(0);
     setVideoProgress(0);
     setVideoLoadFailed(false);
-    pausedForChoiceRef.current = false;ㅠ
+    pausedForChoiceRef.current = false;
     setDraft(scene.interaction?.key ? answers[scene.interaction.key] || '' : '');
     setIntroName(answers.introName || '');
     setIntroAge(answers.introAge || '');
@@ -239,7 +239,7 @@ export default function Branch() {
     [answers],
   );
 
-  const moveNextScene = (nextSceneCode) => {
+  function moveNextScene(nextSceneCode) {
     if (nextSceneCode && sceneCodeToIndex[nextSceneCode] !== undefined) {
       setSceneIndex(sceneCodeToIndex[nextSceneCode]);
       return;
@@ -247,7 +247,7 @@ export default function Branch() {
     if (!isLastScene) {
       setSceneIndex((prev) => Math.min(prev + 1, scenes.length - 1));
     }
-  };
+  }
 
   const saveChoice = (option) => {
     const answerValue = option?.text ?? '';
