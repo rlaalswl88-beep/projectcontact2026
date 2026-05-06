@@ -1,5 +1,17 @@
 import { buildIsolationResult } from '../services/isolationService.js';
 
+const USER_INFO_COOKIE_KEY = 'isolation_user_info';
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+function getCookieOptions() {
+  return {
+    path: '/',
+    maxAge: ONE_DAY_MS,
+    sameSite: process.env.COOKIE_SAME_SITE ?? 'lax',
+    secure: process.env.COOKIE_SECURE === 'true',
+  };
+}
+
 export async function analyzeIsolation(req, res) {
   const { sessionId, submittedAt, totalScenes, responses } = req.body || {};
 
@@ -17,6 +29,9 @@ export async function analyzeIsolation(req, res) {
       totalScenes,
       responses,
     });
+    if (result.cookieProfile) {
+      res.cookie(USER_INFO_COOKIE_KEY, JSON.stringify(result.cookieProfile), getCookieOptions());
+    }
     res.json(result);
   } catch (error) {
     res.status(500).json({
