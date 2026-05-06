@@ -312,7 +312,11 @@ export default function Branch() {
   }
 
   if (!scene) {
-    return <div className="stepa-player">씬 데이터가 없습니다.</div>;
+    return (
+      <div className="stepa-player">
+        <p className="stepa-player__error">{errorMessage || '씬 데이터가 없습니다.'}</p>
+      </div>
+    );
   }
 
   return (
