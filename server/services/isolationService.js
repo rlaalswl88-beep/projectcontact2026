@@ -5,7 +5,7 @@ import {
   insertUserResponse,
   updateParticipantResult,
 } from '../repositories/isolationRepository.js';
-import { buildResultAnalysis } from './llmService.js';
+import { buildResultAnalysis, classifyAnswerFeeling } from './llmService.js';
 
 function getRiskLevel(totalScore) {
   if (totalScore <= 16) {
@@ -101,6 +101,7 @@ export async function buildIsolationResult({ sessionId, submittedAt, totalScenes
           sceneId: sceneInfo.sceneId,
           optionId,
           answerText: null,
+          answerTextFeeling: null,
         });
         continue;
       }
@@ -110,11 +111,13 @@ export async function buildIsolationResult({ sessionId, submittedAt, totalScenes
         interactionKey,
         answerText: value,
       });
+      const answerTextFeeling = await classifyAnswerFeeling(value);
       await insertUserResponse(connection, {
         participantId,
         sceneId: sceneInfo.sceneId,
         optionId: null,
         answerText: value,
+        answerTextFeeling,
       });
     }
 

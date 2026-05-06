@@ -29,13 +29,13 @@ export async function insertParticipant(connection, { userName, age, gender }) {
   return result.insertId;
 }
 
-export async function insertUserResponse(connection, { participantId, sceneId, optionId, answerText }) {
+export async function insertUserResponse(connection, { participantId, sceneId, optionId, answerText, answerTextFeeling }) {
   await connection.query(
     `
-      INSERT INTO user_responses (participant_id, scene_id, option_id, answer_text)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO user_responses (participant_id, scene_id, option_id, answer_text, answer_text_feeling)
+      VALUES (?, ?, ?, ?, ?)
     `,
-    [participantId, sceneId, optionId, answerText],
+    [participantId, sceneId, optionId, answerText, answerTextFeeling],
   );
 }
 

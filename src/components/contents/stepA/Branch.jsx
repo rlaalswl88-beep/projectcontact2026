@@ -4,15 +4,25 @@ import './branch.css';
 
 const TOTAL_MS = 3000;
 const INTERACTION_POINT = 0.72;
+const INTRO_SCENE_CODE = 'SCENE_0';
+const OPTIONAL_INPUT_SCENE_CODE = 'SCENE_3';
+const INTRO_BRIDGE_VIDEO = 'SCENE_0-2.mp4';
+
+function videoUrlForName(name) {
+  if (!name) {
+    return null;
+  }
+  const base = import.meta.env.BASE_URL || '/';
+  const prefix = base.endsWith('/') ? base : `${base}/`;
+  return `${prefix}video/${encodeURIComponent(name)}`;
+}
 
 function videoUrlForScene(scene) {
   if (!scene || scene.video === false) {
     return null;
   }
   const name = scene.video ?? `${scene.sceneCode}.mp4`;
-  const base = import.meta.env.BASE_URL || '/';
-  const prefix = base.endsWith('/') ? base : `${base}/`;
-  return `${prefix}video/${encodeURIComponent(name)}`;
+  return videoUrlForName(name);
 }
 
 function getProgress(ms) {
@@ -46,6 +56,7 @@ export default function Branch() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [playingIntroBridge, setPlayingIntroBridge] = useState(false);
 
   const scene = scenes[sceneIndex];
   const sceneCodeToIndex = useMemo(
@@ -56,12 +67,19 @@ export default function Branch() {
       }, {}),
     [scenes],
   );
-  const videoSrc = useMemo(() => videoUrlForScene(scene), [scene]);
+  const isIntroScene = scene?.sceneCode === INTRO_SCENE_CODE;
+  const videoSrc = useMemo(() => {
+    if (playingIntroBridge) {
+      return videoUrlForName(INTRO_BRIDGE_VIDEO);
+    }
+    return videoUrlForScene(scene);
+  }, [scene, playingIntroBridge]);
   const effectiveVideoSrc = videoLoadFailed ? null : videoSrc;
 
   const progress = effectiveVideoSrc ? Math.min(100, Math.round(videoProgress)) : getProgress(elapsedMs);
   const isLastScene = sceneIndex === scenes.length - 1;
   const canAutoNext = scene?.interaction?.type === 'none';
+  const panelOpenProgress = (isIntroScene || playingIntroBridge) ? 100 : INTERACTION_POINT * 100;
 
   useEffect(() => {
     const loadScenes = async () => {
@@ -94,14 +112,14 @@ export default function Branch() {
     setElapsedMs(0);
     setVideoProgress(0);
     setVideoLoadFailed(false);
-    pausedForChoiceRef.current = false;
+    pausedForChoiceRef.current = false;ㅠ
     setDraft(scene.interaction?.key ? answers[scene.interaction.key] || '' : '');
     setIntroName(answers.introName || '');
     setIntroAge(answers.introAge || '');
     setIntroGender(answers.introGender || '');
     setShowPanel(false);
     setErrorMessage('');
-  }, [sceneIndex, answers, scene]);
+  }, [sceneIndex, answers, scene, playingIntroBridge]);
 
   useEffect(() => {
     if (!scene) {
@@ -164,14 +182,16 @@ export default function Branch() {
       const pct = Math.min(100, (v.currentTime / d) * 100);
       setVideoProgress(pct);
 
-      if (pct >= INTERACTION_POINT * 100) {
+      if (pct >= panelOpenProgress) {
         setShowPanel(true);
       }
 
       if (
         scene.interaction.type !== 'none' &&
         v.currentTime >= d * INTERACTION_POINT &&
-        !pausedForChoiceRef.current
+        !pausedForChoiceRef.current &&
+        !isIntroScene &&
+        !playingIntroBridge
       ) {
         pausedForChoiceRef.current = true;
         v.pause();
@@ -179,6 +199,11 @@ export default function Branch() {
     };
 
     const onEnded = () => {
+      if (playingIntroBridge) {
+        setPlayingIntroBridge(false);
+        moveNextScene('SCENE_1');
+        return;
+      }
       setVideoProgress(100);
       setShowPanel(true);
       if (scene.interaction.type === 'none') {
@@ -196,7 +221,7 @@ export default function Branch() {
       v.removeEventListener('timeupdate', sync);
       v.removeEventListener('ended', onEnded);
     };
-  }, [scene, sceneIndex, effectiveVideoSrc, scenes.length]);
+  }, [scene, sceneIndex, effectiveVideoSrc, scenes.length, panelOpenProgress, isIntroScene, playingIntroBridge]);
 
   const handleVideoError = () => {
     setVideoLoadFailed(true);
@@ -231,7 +256,7 @@ export default function Branch() {
   };
 
   const saveInputAndMove = () => {
-    if (scene.sceneCode === 'SCENE_0') {
+    if (scene.sceneCode === INTRO_SCENE_CODE) {
       if (!introName.trim() || !introAge.trim() || !introGender) {
         const message = '이름, 나이, 성별을 모두 입력해 주세요.';
         setErrorMessage(message);
@@ -245,15 +270,26 @@ export default function Branch() {
         introGender,
         [scene.interaction.key]: `${introName.trim()} / ${introAge.trim()}세 / ${introGender}`,
       }));
-      moveNextScene();
+      if (sceneCodeToIndex.SCENE_1 !== undefined) {
+        setShowPanel(false);
+        setPlayingIntroBridge(true);
+      } else {
+        moveNextScene();
+      }
       return;
     }
 
-    if (!draft.trim()) {
+    const trimmedDraft = draft.trim();
+    if (!trimmedDraft) {
+      if (scene.sceneCode === OPTIONAL_INPUT_SCENE_CODE) {
+        setAnswers((prev) => ({ ...prev, [scene.interaction.key]: '답장 안하기' }));
+        moveNextScene();
+        return;
+      }
       setErrorMessage('문장을 입력해 주세요.');
       return;
     }
-    setAnswers((prev) => ({ ...prev, [scene.interaction.key]: draft.trim() }));
+    setAnswers((prev) => ({ ...prev, [scene.interaction.key]: trimmedDraft }));
     moveNextScene();
   };
 
@@ -331,7 +367,7 @@ export default function Branch() {
       <div className="stepa-player__video">
         {effectiveVideoSrc ? (
           <video
-            key={sceneIndex}
+            key={`${sceneIndex}-${playingIntroBridge ? 'bridge' : 'scene'}`}
             ref={videoRef}
             className="stepa-player__video-el"
             src={effectiveVideoSrc}
