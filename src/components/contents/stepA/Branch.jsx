@@ -293,7 +293,7 @@ export default function Branch() {
       const data = await response.json();
       setResult(data);
       const numericAge = Number.parseInt(introAge, 10) || 0;
-      setStepProfileCookie({
+      setStepProfileCookie(data.cookieProfile ?? {
         id: data.participantId ?? null,
         name: introName.trim(),
         generation: numericAge <= 40 ? 'YB' : 'OB',

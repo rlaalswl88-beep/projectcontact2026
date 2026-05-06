@@ -17,11 +17,23 @@ function getRiskLevel(totalScore) {
   return '높음';
 }
 
+function getGeneration(age) {
+  return age <= 40 ? 'YB' : 'OB';
+}
+
+function getGender(gender) {
+  const normalized = (gender ?? '').trim().toUpperCase();
+  if (normalized === 'M' || normalized === 'F') {
+    return normalized;
+  }
+  return null;
+}
+
 export async function buildIsolationResult({ sessionId, submittedAt, totalScenes, responses }) {
   const participant = {
     userName: (responses?.introName ?? '').trim() || '익명',
     age: Number.parseInt(responses?.introAge ?? '0', 10) || 0,
-    gender: (responses?.introGender ?? '').trim() || null,
+    gender: getGender(responses?.introGender),
   };
 
   const connection = await dbPool.getConnection();
@@ -127,6 +139,12 @@ export async function buildIsolationResult({ sessionId, submittedAt, totalScenes
       submittedAt,
       totalScenes,
       participantId,
+      cookieProfile: {
+        id: participantId,
+        name: participant.userName,
+        generation: getGeneration(participant.age),
+        gender: participant.gender,
+      },
       score: {
         total: totalScore,
         riskLevel: getRiskLevel(totalScore),
