@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import Matter from 'matter-js';
 import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import './Layering.css';
 
 const tabs = [
@@ -539,7 +540,14 @@ function StatsPanel() {
 }
 
 function Layering() {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState(null);
+
+  useEffect(() => {
+    if (location.state?.openTab === 'result') {
+      setActiveTab('result');
+    }
+  }, [location.state]);
 
   return (
     <main className="layering-shell">

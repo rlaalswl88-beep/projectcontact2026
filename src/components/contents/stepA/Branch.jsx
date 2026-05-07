@@ -57,6 +57,9 @@ export default function Branch() {
   const [result, setResult] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [playingIntroBridge, setPlayingIntroBridge] = useState(false);
+  const [existingParticipant, setExistingParticipant] = useState(null);
+  const [checkingExisting, setCheckingExisting] = useState(false);
+  const [introResolvedParticipantId, setIntroResolvedParticipantId] = useState(null);
 
   const scene = scenes[sceneIndex];
   const sceneCodeToIndex = useMemo(
@@ -234,11 +237,6 @@ export default function Branch() {
     }
   };
 
-  const responseCount = useMemo(
-    () => Object.keys(answers).filter((key) => answers[key]).length,
-    [answers],
-  );
-
   function moveNextScene(nextSceneCode) {
     if (nextSceneCode && sceneCodeToIndex[nextSceneCode] !== undefined) {
       setSceneIndex(sceneCodeToIndex[nextSceneCode]);
@@ -255,6 +253,26 @@ export default function Branch() {
     moveNextScene(option?.nextSceneCode);
   };
 
+  const proceedIntroScene = (participantId = null) => {
+    const trimmedName = introName.trim();
+    const trimmedAge = introAge.trim();
+    setIntroResolvedParticipantId(participantId);
+    setExistingParticipant(null);
+    setAnswers((prev) => ({
+      ...prev,
+      introName: trimmedName,
+      introAge: trimmedAge,
+      introGender,
+      [scene.interaction.key]: `${trimmedName} / ${trimmedAge}세 / ${introGender}`,
+    }));
+    if (sceneCodeToIndex.SCENE_1 !== undefined) {
+      setShowPanel(false);
+      setPlayingIntroBridge(true);
+      return;
+    }
+    moveNextScene();
+  };
+
   const saveInputAndMove = () => {
     if (scene.sceneCode === INTRO_SCENE_CODE) {
       if (!introName.trim() || !introAge.trim() || !introGender) {
@@ -263,19 +281,34 @@ export default function Branch() {
         window.alert(message);
         return;
       }
-      setAnswers((prev) => ({
-        ...prev,
-        introName: introName.trim(),
-        introAge: introAge.trim(),
-        introGender,
-        [scene.interaction.key]: `${introName.trim()} / ${introAge.trim()}세 / ${introGender}`,
-      }));
-      if (sceneCodeToIndex.SCENE_1 !== undefined) {
-        setShowPanel(false);
-        setPlayingIntroBridge(true);
-      } else {
-        moveNextScene();
-      }
+      setCheckingExisting(true);
+      setErrorMessage('');
+      fetch('/api/isolation/participant-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userName: introName.trim(),
+          age: introAge.trim(),
+          gender: introGender,
+        }),
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error('기존 참여자 조회 실패');
+          }
+          const data = await response.json();
+          if (data.exists && data.participant) {
+            setExistingParticipant(data.participant);
+            return;
+          }
+          proceedIntroScene(null);
+        })
+        .catch(() => {
+          setErrorMessage('기존 참여자 확인 중 문제가 발생했습니다. 다시 시도해 주세요.');
+        })
+        .finally(() => {
+          setCheckingExisting(false);
+        });
       return;
     }
 
@@ -293,14 +326,56 @@ export default function Branch() {
     moveNextScene();
   };
 
-  const resetAll = () => {
-    setSceneIndex(0);
-    setElapsedMs(0);
-    setAnswers({});
-    setDraft('');
-    setShowPanel(false);
-    setResult(null);
+  const handleRetryExisting = () => {
+    if (!existingParticipant?.id) {
+      return;
+    }
+    setCheckingExisting(true);
     setErrorMessage('');
+    fetch('/api/isolation/participant-restart', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        participantId: existingParticipant.id,
+        userName: introName.trim(),
+        age: introAge.trim(),
+        gender: introGender,
+      }),
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error('다시하기 초기화 실패');
+        }
+        const data = await response.json();
+        if (data.cookieProfile) {
+          setStepProfileCookie(data.cookieProfile);
+        }
+        proceedIntroScene(existingParticipant.id);
+      })
+      .catch(() => {
+        setErrorMessage('다시하기 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+      })
+      .finally(() => {
+        setCheckingExisting(false);
+      });
+  };
+
+  const handleViewExistingResult = () => {
+    if (!existingParticipant?.id) {
+      return;
+    }
+    const numericAge = Number.parseInt(introAge, 10) || 0;
+    setStepProfileCookie({
+      id: existingParticipant.id,
+      name: introName.trim(),
+      generation: numericAge <= 40 ? 'YB' : 'OB',
+      gender: introGender,
+    });
+    navigate('/isolation/step3', {
+      state: {
+        openTab: 'result',
+      },
+    });
   };
 
   const submitAll = async () => {
@@ -308,39 +383,43 @@ export default function Branch() {
     setErrorMessage('');
     setResult(null);
 
-    try {
-      const payload = {
-        sessionId: `stepA-${Date.now()}`,
-        submittedAt: new Date().toISOString(),
-        totalScenes: scenes.length,
-        responses: answers,
-      };
+    const payload = {
+      sessionId: `stepA-${Date.now()}`,
+      submittedAt: new Date().toISOString(),
+      totalScenes: scenes.length,
+      responses: answers,
+      participantId: introResolvedParticipantId,
+    };
+    const numericAge = Number.parseInt(introAge, 10) || 0;
+    const fallbackProfile = {
+      id: null,
+      name: introName.trim(),
+      generation: numericAge <= 40 ? 'YB' : 'OB',
+      gender: introGender,
+    };
 
-      const response = await fetch('/api/isolation/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+    // StepB에서 즉시 참조할 수 있도록 최소 프로필을 먼저 저장하고 화면을 전환한다.
+    setStepProfileCookie(fallbackProfile);
+    navigate('/isolation/step2');
 
-      if (!response.ok) {
-        throw new Error('서버 응답 오류');
-      }
-
-      const data = await response.json();
-      setResult(data);
-      const numericAge = Number.parseInt(introAge, 10) || 0;
-      setStepProfileCookie(data.cookieProfile ?? {
-        id: data.participantId ?? null,
-        name: introName.trim(),
-        generation: numericAge <= 40 ? 'YB' : 'OB',
-        gender: introGender,
-      });
-      navigate('/isolation/step2');
-    } catch (error) {
-      setErrorMessage('분석 전송 중 문제가 발생했습니다. 서버를 확인해 주세요.');
-    } finally {
-      setSubmitting(false);
-    }
+    // 분석은 화면 전환 후에도 백그라운드로 계속 진행한다.
+    fetch('/api/isolation/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error('서버 응답 오류');
+        }
+        const data = await response.json();
+        setStepProfileCookie(data.cookieProfile ?? {
+          ...fallbackProfile,
+          id: data.participantId ?? null,
+        });
+      })
+      .catch(() => {});
   };
 
   if (loadingScenes) {
@@ -384,97 +463,134 @@ export default function Branch() {
             <div className="stepa-player__progress-bar" style={{ width: `${progress}%` }} />
           </div>
         </div>
+        {showPanel && (
+          <section className="stepa-player__panel stepa-player__panel--overlay">
+            {scene.interaction.type === 'none' && <p>다음 장면으로 이동 중...</p>}
+
+            {scene.interaction.type === 'choice' && (
+              <>
+                <p className="stepa-player__question">{scene.interaction.label}</p>
+                <div className="stepa-player__choices">
+                  {scene.interaction.options.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className="stepa-player__choice-btn"
+                      onClick={() => saveChoice(option)}
+                    >
+                      {option.text}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {scene.interaction.type === 'input' && (
+              <>
+                <label className="stepa-player__question" htmlFor={scene.interaction.key}>
+                  {scene.interaction.label}
+                </label>
+                {scene.sceneCode === 'SCENE_0' ? (
+                  <div className="stepa-player__intro-row">
+                    <input
+                      id="intro-name"
+                      type="text"
+                      className="stepa-player__choice-btn"
+                      value={introName}
+                      placeholder="이름 입력"
+                      onChange={(e) => {
+                        setIntroName(e.target.value);
+                        setExistingParticipant(null);
+                        setIntroResolvedParticipantId(null);
+                      }}
+                    />
+                    <input
+                      id="intro-age"
+                      type="number"
+                      className="stepa-player__choice-btn"
+                      value={introAge}
+                      placeholder="나이 입력"
+                      onChange={(e) => {
+                        setIntroAge(e.target.value);
+                        setExistingParticipant(null);
+                        setIntroResolvedParticipantId(null);
+                      }}
+                    />
+                    <select
+                      id="intro-gender"
+                      className="stepa-player__choice-btn stepa-player__intro-select"
+                      value={introGender}
+                      onChange={(e) => {
+                        setIntroGender(e.target.value);
+                        setExistingParticipant(null);
+                        setIntroResolvedParticipantId(null);
+                      }}
+                    >
+                      <option value="">성별 선택</option>
+                      <option value="M">남자</option>
+                      <option value="F">여자</option>
+                    </select>
+                  </div>
+                ) : (
+                  <textarea
+                    id={scene.interaction.key}
+                    className="stepa-player__textarea"
+                    value={draft}
+                    placeholder={scene.interaction.placeholder}
+                    onChange={(e) => setDraft(e.target.value)}
+                  />
+                )}
+                <button
+                  type="button"
+                  className="btn-save stepa-player__submit-btn"
+                  onClick={saveInputAndMove}
+                  disabled={checkingExisting}
+                >
+                  {checkingExisting ? '확인 중...' : '다음'}
+                </button>
+                {scene.sceneCode === 'SCENE_0' && existingParticipant && (
+                  <div className="stepa-player__existing-actions">
+                    <button
+                      type="button"
+                      className="btn-save stepa-player__submit-btn"
+                      disabled={checkingExisting}
+                      onClick={handleRetryExisting}
+                    >
+                      다시 하기
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-search stepa-player__submit-btn"
+                      disabled={checkingExisting}
+                      onClick={handleViewExistingResult}
+                    >
+                      결과 보기
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+
+            {isLastScene && (
+              <button
+                type="button"
+                className="btn-save stepa-player__submit-btn"
+                disabled={submitting}
+                onClick={submitAll}
+              >
+                {submitting ? '분석 중...' : '결과 저장/분석'}
+              </button>
+            )}
+          </section>
+        )}
       </div>
 
-      {showPanel && (
-        <section className="stepa-player__panel">
-          {scene.interaction.type === 'none' && <p>다음 장면으로 이동 중...</p>}
-
-          {scene.interaction.type === 'choice' && (
-            <>
-              <p className="stepa-player__question">{scene.interaction.label}</p>
-              <div className="stepa-player__choices">
-                {scene.interaction.options.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    className="stepa-player__choice-btn"
-                    onClick={() => saveChoice(option)}
-                  >
-                    {option.text}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {scene.interaction.type === 'input' && (
-            <>
-              <label className="stepa-player__question" htmlFor={scene.interaction.key}>
-                {scene.interaction.label}
-              </label>
-              {scene.sceneCode === 'SCENE_0' ? (
-                <div className="stepa-player__intro-row">
-                  <input
-                    id="intro-name"
-                    type="text"
-                    className="stepa-player__choice-btn"
-                    value={introName}
-                    placeholder="이름 입력"
-                    onChange={(e) => setIntroName(e.target.value)}
-                  />
-                  <input
-                    id="intro-age"
-                    type="number"
-                    className="stepa-player__choice-btn"
-                    value={introAge}
-                    placeholder="나이 입력"
-                    onChange={(e) => setIntroAge(e.target.value)}
-                  />
-                  <select
-                    id="intro-gender"
-                    className="stepa-player__choice-btn stepa-player__intro-select"
-                    value={introGender}
-                    onChange={(e) => setIntroGender(e.target.value)}
-                  >
-                    <option value="">성별 선택</option>
-                    <option value="M">남자</option>
-                    <option value="F">여자</option>
-                  </select>
-                </div>
-              ) : (
-                <textarea
-                  id={scene.interaction.key}
-                  className="stepa-player__textarea"
-                  value={draft}
-                  placeholder={scene.interaction.placeholder}
-                  onChange={(e) => setDraft(e.target.value)}
-                />
-              )}
-              <button type="button" className="btn-save stepa-player__submit-btn" onClick={saveInputAndMove}>
-                다음
-              </button>
-            </>
-          )}
-        </section>
-      )}
-
       <footer className="stepa-player__footer">
-        <span>응답 저장: {responseCount}개</span>
+        {/* <span>응답 저장: {responseCount}개</span> */}
         <div className="stepa-player__actions">
-          <button type="button" className="btn-clear stepa-player__action-btn" onClick={resetAll}>
+          {/* <button type="button" className="btn-clear stepa-player__action-btn" onClick={resetAll}>
             초기화
-          </button>
-          {isLastScene && (
-            <button
-              type="button"
-              className="btn-save stepa-player__action-btn stepa-player__action-btn--primary"
-              disabled={submitting}
-              onClick={submitAll}
-            >
-              {submitting ? '분석 중...' : '결과 저장/분석'}
-            </button>
-          )}
+          </button> */}
         </div>
       </footer>
 

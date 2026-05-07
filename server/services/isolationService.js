@@ -1,8 +1,11 @@
 import { dbPool } from '../config/db.js';
 import {
+  deleteUserResponsesByParticipantId,
   findSceneAnswerRows,
+  findLatestParticipantByIdentity,
   insertParticipant,
   insertUserResponse,
+  resetParticipantForRetry,
   updateParticipantResult,
 } from '../repositories/isolationRepository.js';
 import { buildResultAnalysis, classifyAnswerFeeling } from './llmService.js';
@@ -29,12 +32,88 @@ function getGender(gender) {
   return null;
 }
 
-export async function buildIsolationResult({ sessionId, submittedAt, totalScenes, responses }) {
-  const participant = {
+function normalizeParticipantFromResponses(responses) {
+  return {
     userName: (responses?.introName ?? '').trim() || '익명',
     age: Number.parseInt(responses?.introAge ?? '0', 10) || 0,
     gender: getGender(responses?.introGender),
   };
+}
+
+export async function findExistingParticipantProfile({ userName, age, gender }) {
+  const connection = await dbPool.getConnection();
+  try {
+    const row = await findLatestParticipantByIdentity(connection, {
+      userName: (userName ?? '').trim(),
+      age: Number.parseInt(age ?? '0', 10) || 0,
+      gender: getGender(gender),
+    });
+    if (!row) {
+      return { ok: true, exists: false };
+    }
+
+    return {
+      ok: true,
+      exists: true,
+      participant: {
+        id: row.id,
+        name: row.user_name,
+        age: Number(row.age ?? 0),
+        gender: row.gender,
+        totalScore: Number(row.total_score ?? 0),
+        resultAnalysis: row.result_analysis ?? '',
+      },
+    };
+  } finally {
+    connection.release();
+  }
+}
+
+export async function restartParticipantProfile({ participantId, userName, age, gender }) {
+  const normalizedParticipantId = Number.parseInt(participantId, 10);
+  if (!Number.isFinite(normalizedParticipantId) || normalizedParticipantId <= 0) {
+    throw new Error('유효하지 않은 participantId 입니다.');
+  }
+
+  const normalized = {
+    userName: (userName ?? '').trim() || '익명',
+    age: Number.parseInt(age ?? '0', 10) || 0,
+    gender: getGender(gender),
+  };
+
+  const connection = await dbPool.getConnection();
+  try {
+    await connection.beginTransaction();
+    await resetParticipantForRetry(connection, {
+      participantId: normalizedParticipantId,
+      ...normalized,
+    });
+    await deleteUserResponsesByParticipantId(connection, normalizedParticipantId);
+    await connection.commit();
+
+    return {
+      ok: true,
+      participantId: normalizedParticipantId,
+      cookieProfile: {
+        id: normalizedParticipantId,
+        name: normalized.userName,
+        generation: getGeneration(normalized.age),
+        gender: normalized.gender,
+      },
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function buildIsolationResult({ sessionId, submittedAt, totalScenes, responses, participantId }) {
+  const participant = {
+    ...normalizeParticipantFromResponses(responses),
+  };
+  const requestedParticipantId = Number.parseInt(participantId, 10);
 
   const connection = await dbPool.getConnection();
   try {
@@ -61,7 +140,10 @@ export async function buildIsolationResult({ sessionId, submittedAt, totalScenes
       }
     });
 
-    const participantId = await insertParticipant(connection, participant);
+    const currentParticipantId =
+      Number.isFinite(requestedParticipantId) && requestedParticipantId > 0
+        ? requestedParticipantId
+        : await insertParticipant(connection, participant);
     let totalScore = 0;
     const choiceAnswers = [];
     const textAnswers = [];
@@ -97,7 +179,7 @@ export async function buildIsolationResult({ sessionId, submittedAt, totalScenes
           score: optionScore,
         });
         await insertUserResponse(connection, {
-          participantId,
+          participantId: currentParticipantId,
           sceneId: sceneInfo.sceneId,
           optionId,
           answerText: null,
@@ -113,7 +195,7 @@ export async function buildIsolationResult({ sessionId, submittedAt, totalScenes
       });
       const answerTextFeeling = await classifyAnswerFeeling(value);
       await insertUserResponse(connection, {
-        participantId,
+        participantId: currentParticipantId,
         sceneId: sceneInfo.sceneId,
         optionId: null,
         answerText: value,
@@ -129,7 +211,7 @@ export async function buildIsolationResult({ sessionId, submittedAt, totalScenes
     });
 
     await updateParticipantResult(connection, {
-      participantId,
+      participantId: currentParticipantId,
       totalScore,
       resultAnalysis,
     });
@@ -141,9 +223,9 @@ export async function buildIsolationResult({ sessionId, submittedAt, totalScenes
       sessionId,
       submittedAt,
       totalScenes,
-      participantId,
+      participantId: currentParticipantId,
       cookieProfile: {
-        id: participantId,
+        id: currentParticipantId,
         name: participant.userName,
         generation: getGeneration(participant.age),
         gender: participant.gender,

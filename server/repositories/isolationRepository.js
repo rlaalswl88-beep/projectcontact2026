@@ -17,6 +17,25 @@ export async function findSceneAnswerRows(connection) {
   return rows;
 }
 
+export async function findLatestParticipantByIdentity(connection, { userName, age, gender }) {
+  const [rows] = await connection.query(
+    `
+      SELECT id, user_name, age, gender, total_score, result_analysis
+      FROM survey_participants
+      WHERE user_name = ?
+        AND age = ?
+        AND (
+          (gender IS NULL AND ? IS NULL)
+          OR gender = ?
+        )
+      ORDER BY id DESC
+      LIMIT 1
+    `,
+    [userName, age, gender, gender],
+  );
+  return rows[0] ?? null;
+}
+
 export async function insertParticipant(connection, { userName, age, gender }) {
   const [result] = await connection.query(
     `
@@ -29,6 +48,17 @@ export async function insertParticipant(connection, { userName, age, gender }) {
   return result.insertId;
 }
 
+export async function resetParticipantForRetry(connection, { participantId, userName, age, gender }) {
+  await connection.query(
+    `
+      UPDATE survey_participants
+      SET user_name = ?, age = ?, gender = ?, total_score = 0, result_analysis = ''
+      WHERE id = ?
+    `,
+    [userName, age, gender, participantId],
+  );
+}
+
 export async function insertUserResponse(connection, { participantId, sceneId, optionId, answerText, answerTextFeeling }) {
   await connection.query(
     `
@@ -36,6 +66,16 @@ export async function insertUserResponse(connection, { participantId, sceneId, o
       VALUES (?, ?, ?, ?, ?)
     `,
     [participantId, sceneId, optionId, answerText, answerTextFeeling],
+  );
+}
+
+export async function deleteUserResponsesByParticipantId(connection, participantId) {
+  await connection.query(
+    `
+      DELETE FROM user_responses
+      WHERE participant_id = ?
+    `,
+    [participantId],
   );
 }
 
