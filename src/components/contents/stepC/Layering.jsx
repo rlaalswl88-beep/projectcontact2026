@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'framer-motion';
+﻿import { AnimatePresence, motion } from 'framer-motion';
 import Matter from 'matter-js';
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -6,7 +6,7 @@ import './Layering.css';
 
 const tabs = [
   { id: 'info', label: '관련기사&정보', kicker: 'Related Articles', symbol: '01' },
-  { id: 'chat', label: '따듯한 한마디', kicker: 'Warm Message', symbol: '02' },
+  { id: 'chat', label: '따뜻한 한마디', kicker: 'Warm Message', symbol: '02' },
   { id: 'result', label: '설문결과', kicker: 'Survey Result', symbol: '03' },
   { id: 'stats', label: '통계', kicker: 'Statistics', symbol: '04' },
 ];
@@ -19,7 +19,7 @@ const fallbackStatistics = {
     nodes: [
       { id: 'answer-alone', type: 'answer', label: '혼자 있는 시간', ageGroup: '20대', gender: 'M', count: 78, percentage: 34, x: -64, y: 100, z: 12, color: '#51d9ff' },
       { id: 'answer-burnout', type: 'answer', label: '번아웃', ageGroup: '30대', gender: 'F', count: 72, percentage: 29, x: 56, y: 100, z: -22, color: '#ffd166' },
-      { id: 'answer-support', type: 'answer', label: '도움 요청 어려움', ageGroup: '40대+', gender: 'M', count: 57, percentage: 24, x: 16, y: 100, z: 76, color: '#b7f06f' },
+      { id: 'answer-support', type: 'answer', label: '지원 요청 어려움', ageGroup: '40대+', gender: 'M', count: 57, percentage: 24, x: 16, y: 100, z: 76, color: '#b7f06f' },
     ],
     links: [
       { source: 'answer-alone', target: 'answer-burnout', value: 7 },
@@ -32,7 +32,7 @@ const fallbackStatistics = {
         sceneId: 1,
         sceneCode: 'SCENE_1',
         sceneTitle: '관계 피로',
-        interactionLabel: '최근 연락을 피하고 싶은 순간이 있었나요?',
+        interactionLabel: '최근 연락을 피하고 싶은 시간이 있었나요?',
         interactionType: 'choice',
         totalResponses: 32,
         answers: [
@@ -134,10 +134,10 @@ function InfoPanel() {
   return (
     <div className="layering-panel">
       <span className="layering-panel__eyebrow">Related Articles</span>
-      <h2>응답과 연결된 기사와 정보를 모았습니다.</h2>
-      <p>고립, 관계 단절, 도움 요청의 어려움처럼 설문에서 드러난 신호를 더 깊게 읽을 수 있는 자료 영역입니다.</p>
+      <h2>응답과 연결된 기사와 정보를 모았습니다</h2>
+      <p>고립, 관계, 일상 회복처럼 설문에서 드러난 신호를 더 깊게 읽을 수 있는 자료 영역입니다.</p>
       <div className="layering-info-grid">
-        <div><strong>관련 키워드</strong><span>고립, 은둔, 관계 피로</span></div>
+        <div><strong>관련 키워드</strong><span>고립, 관계, 회복</span></div>
         <div><strong>연령 분기</strong><span>YB / OB</span></div>
         <div><strong>데이터 기준</strong><span>설문 응답 관계</span></div>
       </div>
@@ -145,16 +145,194 @@ function InfoPanel() {
   );
 }
 
+function parseIsolationUserCookie() {
+  const cookie = document.cookie
+    .split(';')
+    .map((item) => item.trim())
+    .find((item) => item.startsWith('isolation_user_info='));
+
+  if (!cookie) return null;
+
+  const rawValue = decodeURIComponent(cookie.slice('isolation_user_info='.length));
+  try {
+    const parsed = JSON.parse(rawValue);
+    return parsed?.id ? { ...parsed, id: String(parsed.id) } : null;
+  } catch {
+    const params = new URLSearchParams(rawValue.replace(/,/g, '&'));
+    const id = params.get('id') || rawValue.match(/id\s*[:=]\s*([^,\s]+)/)?.[1];
+    return id ? { id: String(id) } : null;
+  }
+}
+
 function ChatPanel() {
+  const [nickname, setNickname] = useState('');
+  const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState([]);
+  const [myMessages, setMyMessages] = useState([]);
+  const [isMineModalOpen, setIsMineModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const currentUser = parseIsolationUserCookie();
+  const currentUserId = currentUser?.id ?? null;
+
+  async function loadMessages() {
+    const response = await fetch('/api/warm/messages', {
+      credentials: 'include',
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    setMessages(data.messages ?? []);
+  }
+
+  async function loadMyMessages() {
+    const response = await fetch('/api/warm/messages/mine', {
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      setMyMessages([]);
+      return;
+    }
+    const data = await response.json();
+    setMyMessages(data.messages ?? []);
+  }
+
+  useEffect(() => {
+    loadMessages();
+  }, []);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    if (isSubmitting) return;
+    if (!nickname.trim()) {
+      alert('닉네임을 입력해주세요');
+      return;
+    }
+    if (!message.trim()) {
+      alert('내용을 입력해주세요');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch('/api/warm/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ nickname, message }),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        alert(data?.message || '커뮤니티 가이드라인에 맞지 않는 표현이 포함되어 있습니다.');
+        return;
+      }
+
+      setMessage('');
+      window.setTimeout(() => {
+        loadMessages();
+        if (isMineModalOpen) loadMyMessages();
+      }, 1200);
+    } catch {
+      alert('메시지를 등록하지 못했습니다.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   return (
     <div className="layering-chat">
-      <div className="layering-chat__bubble layering-chat__bubble--left">오늘 여기까지 온 것만으로도 이미 충분히 중요한 응답이에요.</div>
-      <div className="layering-chat__bubble layering-chat__bubble--right">내 상태를 보는 일이 조금 낯설긴 해요.</div>
-      <div className="layering-chat__bubble layering-chat__bubble--left">낯설어도 괜찮아요. 지금은 판단보다 확인이 먼저입니다.</div>
+      <div className="layering-chat__tools">
+        <button
+          type="button"
+          onClick={() => {
+            setIsMineModalOpen(true);
+            loadMessages();
+            loadMyMessages();
+          }}
+        >
+          내가 쓴 메시지 보기
+        </button>
+      </div>
+      <div className="layering-chat__list">
+        {messages.length === 0 && (
+          <div className="layering-chat__bubble layering-chat__bubble--left">오늘 여기까지 온 것만으로도 이미 충분히 중요한 응답이에요.</div>
+        )}
+        {messages.map((item) => {
+          const isMine = currentUserId && String(item.userId) === String(currentUserId);
+          return (
+            <div
+              key={item.id}
+              className={`layering-chat__bubble ${isMine ? 'layering-chat__bubble--right' : 'layering-chat__bubble--left'}`}
+            >
+              <strong>{item.nickname || '익명'}</strong>
+              <span>{item.message}</span>
+            </div>
+          );
+        })}
+      </div>
+      <form className="layering-chat__form" onSubmit={handleSubmit}>
+        <input
+          type="text"
+          value={nickname}
+          onChange={(event) => setNickname(event.target.value)}
+          placeholder="닉네임"
+          maxLength={50}
+        />
+        <textarea
+          value={message}
+          onChange={(event) => setMessage(event.target.value)}
+          placeholder="따뜻한 한마디를 남겨주세요"
+          maxLength={500}
+        />
+        <button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? '등록 중' : '등록'}
+        </button>
+      </form>
+      <AnimatePresence>
+        {isMineModalOpen && (
+          <motion.div
+            className="layering-chat-mine"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            role="dialog"
+            aria-modal="true"
+          >
+            <motion.div
+              className="layering-chat-mine__panel"
+              initial={{ y: 24 }}
+              animate={{ y: 0 }}
+              exit={{ y: 24 }}
+            >
+              <header>
+                <strong>내가 쓴 메시지</strong>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMineModalOpen(false);
+                    loadMessages();
+                  }}
+                  aria-label="닫기"
+                >
+                  x
+                </button>
+              </header>
+              <div className="layering-chat-mine__list">
+                {!currentUserId && <p>쿠키 정보가 없어 내 메시지를 확인할 수 없습니다.</p>}
+                {currentUserId && myMessages.length === 0 && <p>아직 등록된 내 메시지가 없습니다.</p>}
+                {myMessages.map((item) => (
+                  <article key={item.id}>
+                    <strong>{item.nickname || '익명'}</strong>
+                    <span>{item.message}</span>
+                  </article>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
-
 function PersonalResultPanel() {
   const [surveyResults, setSurveyResults] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -509,7 +687,7 @@ function StatsPanel() {
               className="layering-answer-row"
               style={{ '--legend-color': chartColors[index % chartColors.length] }}
             >
-              <span>{answer.answerType === 'option_id' ? '선택형' : '주관식'}</span>
+              <span>{answer.answerType === 'option_id' ? '선택' : '감정'}</span>
               <strong>{answer.answerLabel}</strong>
               <em>{answer.count}명 / {answer.percentage}%</em>
             </div>
@@ -530,7 +708,7 @@ function StatsPanel() {
               : `지금까지 ${participantTotal.toLocaleString()}개의 '하루'가 제출되었습니다.`}
           </strong>
         </div>
-        <canvas ref={canvasRef} className="layering-flat-canvas" aria-label="참여자 수 낙하 시각화" />
+        <canvas ref={canvasRef} className="layering-flat-canvas" aria-label="참여자 '하루' 낙하 시각화" />
       </div>
       <div className="layering-stats-next">
         <button type="button" onClick={() => setStatsStep(1)}>전체 통계 보기</button>
