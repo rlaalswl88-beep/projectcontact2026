@@ -41,7 +41,7 @@ function TopStories() {
                     <Link to="/isolation/step1">
                         <div className="thumb top_visual_thumb" style={{width: '690px', height: '380px', overflow: 'hidden' }}>
                             <img style={{width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
-                                src="../public/img/top/20260424_112804731.png"
+                                src={`${import.meta.env.BASE_URL}img/top/20260424_112804731.png`}
                                 alt=""
                             />
                         </div>

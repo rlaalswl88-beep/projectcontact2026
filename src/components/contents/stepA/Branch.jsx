@@ -30,6 +30,14 @@ function getProgress(ms) {
 }
 
 const STEP_PROFILE_COOKIE = 'isolation_user_info';
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
+function apiUrl(path) {
+  if (!path.startsWith('/')) {
+    return `${API_BASE}/${path}`;
+  }
+  return `${API_BASE}${path}`;
+}
 
 function setStepProfileCookie(profile) {
   const encoded = encodeURIComponent(JSON.stringify(profile));
@@ -89,7 +97,7 @@ export default function Branch() {
       setLoadingScenes(true);
       setErrorMessage('');
       try {
-        const response = await fetch('/api/scenes');
+        const response = await fetch(apiUrl('/api/scenes'));
         if (!response.ok) {
           throw new Error('씬 목록 응답 오류');
         }
@@ -283,7 +291,7 @@ export default function Branch() {
       }
       setCheckingExisting(true);
       setErrorMessage('');
-      fetch('/api/isolation/participant-check', {
+      fetch(apiUrl('/api/isolation/participant-check'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -332,7 +340,7 @@ export default function Branch() {
     }
     setCheckingExisting(true);
     setErrorMessage('');
-    fetch('/api/isolation/participant-restart', {
+    fetch(apiUrl('/api/isolation/participant-restart'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -403,7 +411,7 @@ export default function Branch() {
     navigate('/isolation/step2');
 
     // 분석은 화면 전환 후에도 백그라운드로 계속 진행한다.
-    fetch('/api/isolation/analyze', {
+    fetch(apiUrl('/api/isolation/analyze'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
