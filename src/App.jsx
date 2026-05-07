@@ -16,11 +16,11 @@ const prevent = (e) => {
 function App() {
     const location = useLocation();
     const isStep2 = location.pathname === "/isolation/step2";
-    const hideFooter = isStep2;
+    const hideChrome = isStep2;
 
     return (
         <div id="wrapper" className="adaptive">
-            {!isStep2 && <Nav />}
+            {!hideChrome && <Nav />}
             <div id="container">
                 <div id="content" className="main_content">
                     <Routes>
@@ -38,7 +38,7 @@ function App() {
                     </Routes>
                 </div>
             </div>
-            {!hideFooter && <Footer />}
+            {!hideChrome && <Footer />}
         </div>
     );
 }

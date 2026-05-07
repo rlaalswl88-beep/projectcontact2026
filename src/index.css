@@ -133,6 +133,25 @@ body {
     padding: 0;
   }
 
+  #footer.adaptive {
+    margin-top: 0;
+    background: #fff;
+  }
+
+  #footer.adaptive .da_corp_area,
+  #footer.adaptive .inner,
+  #footer.adaptive .da_corp_head {
+    margin-top: 0;
+    padding-top: 0;
+  }
+
+  #footer.adaptive h2,
+  #footer.adaptive h3,
+  #footer.adaptive p,
+  #footer.adaptive ul {
+    margin-top: 0;
+  }
+
   .top_menu {
     position: relative;
     padding: 8px 12px;
