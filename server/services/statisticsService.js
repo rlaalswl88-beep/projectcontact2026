@@ -279,10 +279,12 @@ function buildStatisticsPayload(statRows, participantRows) {
     },
     summary: {
       groups: [...groupSummaries.values()],
-      questions: [...questionsByCode.values()].map((question) => ({
-        ...question,
-        answers: aggregateQuestionAnswers(question),
-      })),
+      questions: [...questionsByCode.values()]
+        .sort((a, b) => a.sceneId - b.sceneId)
+        .map((question) => ({
+          ...question,
+          answers: aggregateQuestionAnswers(question),
+        })),
       topAnswers,
       participants: step2Summary,
     },
