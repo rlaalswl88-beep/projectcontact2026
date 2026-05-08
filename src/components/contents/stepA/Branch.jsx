@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './branch.css';
+import './Branch.css';
 
 const TOTAL_MS = 3000;
 const INTERACTION_POINT = 0.72;
