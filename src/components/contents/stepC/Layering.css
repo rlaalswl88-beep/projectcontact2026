@@ -1060,6 +1060,6 @@ body:has(.layering-shell) {
 
 @media (max-width: 768px) {
   #container:has(.layering-shell) {
-    height: calc(100dvh - 92px);
+    height: 100dvh;
   }
 }

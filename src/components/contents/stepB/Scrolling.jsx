@@ -5,6 +5,7 @@ import * as THREE from "three";
 import "./Scrolling.css";
 import { Environment } from '@react-three/drei';
 import headlineData from "./B_deta.json";
+import { useNavigate } from "react-router-dom";
 
 const DEPTH = 12800;
 const DRAG_LIMIT = 45;
@@ -328,6 +329,7 @@ function BubbleField({ scrollVelocityRef, scrollInputRef, pointerMotionRef }) {
   );
 }
 function Scrolling() {
+  const navigate = useNavigate();
   const shellRef = useRef(null);
   const viewportRef = useRef(null);
   const dragStartRef = useRef(null);
@@ -353,6 +355,7 @@ function Scrolling() {
   const restoreFromRef = useRef(0);
   const visibleHeadlineIdsRef = useRef(new Set());
   const headlineFlashTimeoutsRef = useRef(new Map());
+  const shouldNavigateAfterRestoreRef = useRef(false);
 
   const [scrollProgress, setScrollProgress] = useState(0);
   const [look, setLook] = useState({ x: 0, y: 0 });
@@ -617,6 +620,12 @@ function Scrolling() {
             restoreFromRef.current = 0;
             restoreProgressRef.current = 0;
             scrollVelocityRef.current = lerp(scrollVelocityRef.current, 0, 0.22);
+            if (shouldNavigateAfterRestoreRef.current) {
+              shouldNavigateAfterRestoreRef.current = false;
+              window.setTimeout(() => {
+                navigate("/isolation/step3");
+              }, 80);
+            }
             return 0;
           }
 
@@ -813,6 +822,7 @@ function Scrolling() {
     isRestoringRef.current = true;
     restoreStartRef.current = performance.now();
     restoreFromRef.current = scrollProgress;
+    shouldNavigateAfterRestoreRef.current = true;
     targetProgressRef.current = 0;
     scrollInputRef.current = 1;
     pointerMotionRef.current = 0.8;

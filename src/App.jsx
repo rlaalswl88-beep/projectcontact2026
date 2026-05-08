@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
 import Nav from "./components/main/Header";
 import TopStories from "./components/main/TopStories";
@@ -16,7 +17,20 @@ const prevent = (e) => {
 function App() {
     const location = useLocation();
     const isStep2 = location.pathname === "/isolation/step2";
-    const hideChrome = isStep2;
+    const isStep3 = location.pathname === "/isolation/step3";
+    const [isMobileViewport, setIsMobileViewport] = useState(false);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia("(max-width: 768px)");
+        const syncViewport = () => setIsMobileViewport(mediaQuery.matches);
+
+        syncViewport();
+        mediaQuery.addEventListener("change", syncViewport);
+
+        return () => mediaQuery.removeEventListener("change", syncViewport);
+    }, []);
+
+    const hideChrome = isStep2 || (isStep3 && isMobileViewport);
 
     return (
         <div id="wrapper" className="adaptive">
