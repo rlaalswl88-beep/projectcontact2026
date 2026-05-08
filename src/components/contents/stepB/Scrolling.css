@@ -753,7 +753,7 @@ body:has(.scroll3d),
   border-radius: 50%;
   background:
     radial-gradient(circle, rgba(255, 255, 255, calc(var(--reveal, 0) * 0.32)) 0 5%, transparent 18%),
-    url('/dongaProject/img/B/abyss-glow.gif') center / contain no-repeat;
+    url('/img/B/abyss-glow.gif') center / contain no-repeat;
   opacity: calc(var(--reveal, 0) * 0.72);
   filter: blur(1.2px) brightness(1.45) contrast(1.12);
   mix-blend-mode: screen;
