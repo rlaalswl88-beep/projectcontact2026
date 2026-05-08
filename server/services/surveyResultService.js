@@ -14,6 +14,7 @@ function getAnswerValue(row) {
   return row.answer_text ?? null;
 }
 
+// 포트폴리오 포인트: participantId 하나로 개인 답변, 총점, AI 분석 리포트를 조립하는 설문결과 API입니다.
 export async function getSurveyResults(participantId) {
   const participant = await findSurveyParticipantById(participantId);
   if (!participant) {

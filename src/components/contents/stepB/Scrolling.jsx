@@ -20,8 +20,11 @@ const POINTER_LOCK_RELEASE_MOTION = 8;
 const RESTORE_EFFECT_DURATION_MS = 3000;
 const HEADLINE_FLASH_DURATION_MS = 620;
 const DEFAULT_GENERATION = "YB";
+// 포트폴리오 포인트: Step1 쿠키 데이터를 기반으로 B콘텐츠를 사용자 세대별로 개인화합니다.
 const USER_INFO_COOKIE_KEY = "isolation_user_info";
 const VALID_GENERATIONS = new Set(["YB", "OB"]);
+const PUBLIC_ASSET_BASE = import.meta.env.BASE_URL;
+const STEP2_BGM_SRC = `${PUBLIC_ASSET_BASE}audio/deepSea.mp3`;
 
 function getCookieValue(key) {
   if (typeof document === "undefined") return null;
@@ -92,6 +95,7 @@ function randomRange(seed, min, max) {
   return min + seededRandom(seed) * (max - min);
 }
 
+// 포트폴리오 포인트: DB/쿠키에서 넘어온 generation 값으로 콘텐츠 큐레이션 목록을 동적으로 구성합니다.
 function buildHeadlineItems(data, generation) {
   const filtered = data.filter((item) => item.generation === generation).slice(0, 10);
 
@@ -199,6 +203,7 @@ function buildBubbleData() {
   });
 }
 
+// 포트폴리오 포인트: 사용자의 스크롤 속도와 포인터 움직임을 3D 파티클 반응으로 연결한 인터랙션입니다.
 function Bubbles({ scrollVelocityRef, scrollInputRef, pointerMotionRef }) {
   const meshRef = useRef(null);
   const groupRef = useRef(null);
@@ -328,6 +333,7 @@ function BubbleField({ scrollVelocityRef, scrollInputRef, pointerMotionRef }) {
     </Canvas>
   );
 }
+// 포트폴리오 포인트: 실제 스크롤 없이 가상 진행도, 3D 씬, 페이지 전환 이벤트를 한 흐름으로 제어합니다.
 function Scrolling() {
   const navigate = useNavigate();
   const shellRef = useRef(null);
@@ -337,6 +343,7 @@ function Scrolling() {
   const rafRef = useRef(0);
   const pointerPointRef = useRef(null);
   const restoreEffectTimeoutRef = useRef(0);
+  const bgmRef = useRef(null);
 
   const targetLookRef = useRef({ x: 0, y: 0 });
   const desiredLookRef = useRef({ x: 0, y: 0 });
@@ -384,6 +391,14 @@ function Scrolling() {
     );
   }, []);
 
+  const playBgm = useCallback(() => {
+    const audio = bgmRef.current;
+    if (!audio) return;
+
+    audio.volume = 0.42;
+    audio.play().catch(() => {});
+  }, []);
+
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -393,6 +408,16 @@ function Scrolling() {
       document.body.style.overflow = previousOverflow;
     };
   }, []);
+
+  useEffect(() => {
+    playBgm();
+    return () => {
+      const audio = bgmRef.current;
+      if (!audio) return;
+      audio.pause();
+      audio.currentTime = 0;
+    };
+  }, [playBgm]);
 
   useEffect(() => {
     return () => {
@@ -456,11 +481,13 @@ function Scrolling() {
     return () => window.removeEventListener("resize", syncViewportGap);
   }, []);
 
+  // 포트폴리오 포인트: wheel/touch/keyboard 입력을 통합 처리해 PC와 모바일에서 동일한 스크롤 경험을 제공합니다.
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return undefined;
 
     const handleWheel = (event) => {
+      playBgm();
       event.preventDefault();
       desiredLookRef.current = { x: 0, y: 0 };
       latestPointerLookRef.current = null;
@@ -475,6 +502,7 @@ function Scrolling() {
     };
 
     const handleTouchStart = (event) => {
+      playBgm();
       if (event.target.closest("button")) {
         touchStartRef.current = null;
         pendingTouchDeltaRef.current = 0;
@@ -504,6 +532,7 @@ function Scrolling() {
     };
 
     const handleKeyDown = (event) => {
+      playBgm();
       if (
         event.key === "ArrowDown" ||
         event.key === "PageDown" ||
@@ -540,8 +569,9 @@ function Scrolling() {
       viewport.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [addProgress]);
+  }, [addProgress, playBgm]);
 
+  // 포트폴리오 포인트: requestAnimationFrame 기반 보간으로 카메라 이동, 시선, 속도감을 부드럽게 동기화합니다.
   useEffect(() => {
     const tick = (now = performance.now()) => {
       pointerMotionRef.current = lerp(pointerMotionRef.current, 0, 0.045);
@@ -808,6 +838,7 @@ function Scrolling() {
     }
   };
 
+  // 포트폴리오 포인트: B콘텐츠 종료 애니메이션이 끝난 뒤 Step3 라우팅까지 자연스럽게 이어지는 전환 로직입니다.
   const handleRestoreScroll = (event) => {
     event?.preventDefault();
     event?.stopPropagation();
@@ -852,6 +883,7 @@ function Scrolling() {
 
   return (
     <section className="scroll3d" ref={shellRef}>
+      <audio ref={bgmRef} src={STEP2_BGM_SRC} loop preload="auto" />
       <div
         className="scroll3d__viewport"
         ref={viewportRef}
@@ -886,7 +918,7 @@ function Scrolling() {
           <div className="scroll3d__restore-effect" aria-hidden>
             <img
               key={restoreEffectKey}
-              src="/img/B/restore-suckit.webp"
+              src={`${PUBLIC_ASSET_BASE}img/B/restore-suckit.webp`}
               alt=""
             />
           </div>

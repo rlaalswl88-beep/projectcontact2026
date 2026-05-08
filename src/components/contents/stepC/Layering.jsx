@@ -5,10 +5,10 @@ import { useLocation } from 'react-router-dom';
 import './Layering.css';
 
 const tabs = [
-  { id: 'info', label: '관련기사&정보', kicker: 'Related Articles', symbol: '01' },
-  { id: 'chat', label: '따뜻한 한마디', kicker: 'Warm Message', symbol: '02' },
-  { id: 'result', label: '설문결과', kicker: 'Survey Result', symbol: '03' },
-  { id: 'stats', label: '통계', kicker: 'Statistics', symbol: '04' },
+  { id: 'info', label: '관련기사&정보', kicker: 'Related Articles', symbol: '01', image: 'CSimg001.png' },
+  { id: 'chat', label: '따뜻한 한마디', kicker: 'Warm Message', symbol: '02', image: 'CSimg002.png' },
+  { id: 'result', label: '설문결과', kicker: 'Survey Result', symbol: '03', image: 'CSimg003.png' },
+  { id: 'stats', label: '통계', kicker: 'Statistics', symbol: '04', image: 'CSimg004.png' },
 ];
 
 const fallbackStatistics = {
@@ -72,10 +72,13 @@ const resultThumbnailExtByNumber = {
   '0013': 'png',
 };
 
-function getResultThumbnailSrc(question, index) {
+const PUBLIC_ASSET_BASE = import.meta.env.BASE_URL;
+
+// 보조 유틸: DB의 scene 순서와 정적 이미지 리소스를 동일한 인덱스 체계로 매칭합니다.
+function getResultThumbnailSrc(index) {
   const thumbnailNumber = String(index + 1).padStart(4, '0');
   const extension = resultThumbnailExtByNumber[thumbnailNumber];
-  return extension ? `/img/C_result/${thumbnailNumber}.${extension}` : null;
+  return extension ? `${PUBLIC_ASSET_BASE}img/C_result/${thumbnailNumber}.${extension}` : null;
 }
 
 const chartColors = ['#5ee7ff', '#8bffbd', '#ffd166', '#ff8fab', '#b69cff', '#ffffff'];
@@ -114,7 +117,7 @@ function MobileModal({ activeTab, onClose }) {
         >
           <header className="layering-modal__header">
             <button className="layering-modal__close" type="button" onClick={onClose} aria-label="닫기">
-              x
+              <img src={`${PUBLIC_ASSET_BASE}img/icon/back_icon.png`} alt="" />
             </button>
             <strong>{tab?.label}</strong>
           </header>
@@ -164,6 +167,7 @@ function parseIsolationUserCookie() {
   }
 }
 
+// 포트폴리오 포인트: 쿠키 userId를 기준으로 채팅 등록, 전체 조회, 내 메시지 분리 조회를 처리합니다.
 function ChatPanel() {
   const [nickname, setNickname] = useState('');
   const [message, setMessage] = useState('');
@@ -333,6 +337,7 @@ function ChatPanel() {
     </div>
   );
 }
+// 포트폴리오 포인트: participantId 쿠키와 백엔드 API를 연동해 개인 답변, 총점, AI 분석 리포트를 렌더링합니다.
 function PersonalResultPanel() {
   const [surveyResults, setSurveyResults] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -367,18 +372,16 @@ function PersonalResultPanel() {
   }, []);
 
   const participant = surveyResults?.participant ?? null;
-  const answers = surveyResults?.answers ?? [];
+  const answers = (surveyResults?.answers ?? []).filter((item) => item.sceneCode !== 'SCENE_0');
 
   return (
     <div className="layering-panel layering-result-panel">
-      <span className="layering-panel__eyebrow">Survey Result</span>
-      <h2>내 설문 리포트</h2>
+      <h2>설문 리포트</h2>
       {isLoading && <p className="layering-result-state">내 설문결과를 불러오는 중입니다.</p>}
       {errorMessage && <p className="layering-result-state layering-result-state--error">{errorMessage}</p>}
       {!isLoading && !errorMessage && answers.length === 0 && (
         <p className="layering-result-state">아직 저장된 내 설문 답변이 없습니다.</p>
       )}
-
       {participant && (
         <div className="layering-result-profile">
           <strong>{participant.name || '익명'}님의 답변</strong>
@@ -388,27 +391,8 @@ function PersonalResultPanel() {
           </span>
         </div>
       )}
-
-      <div className="layering-result-list">
-        {answers.map((item, index) => (
-          <section key={item.sceneId} className="layering-result-question">
-            <div className="layering-result-question__head">
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              <em>{item.interactionType}</em>
-            </div>
-            <h3>{item.interactionLabel || item.sceneTitle}</h3>
-            <div className="layering-result-answers">
-              <article className="layering-result-answer">
-                <small>내 답변</small>
-                <p>{item.answer?.answerValue || item.answer?.answerText || '응답 없음'}</p>
-              </article>
-            </div>
-          </section>
-        ))}
-      </div>
-
       {participant && (
-        <section className="layering-result-report">
+        <section className="layering-result-report layering-result-report--top">
           <div>
             <span>총점</span>
             <strong>{participant.totalScore ?? 0}</strong>
@@ -419,6 +403,36 @@ function PersonalResultPanel() {
           </article>
         </section>
       )}
+
+
+
+      <div className="layering-result-list">
+        {answers.map((item, index) => {
+          const thumbnailSrc = getResultThumbnailSrc(index);
+          return (
+            <section key={item.sceneId} className="layering-result-question">
+              {thumbnailSrc && (
+                <img
+                  className="layering-result-question__image"
+                  src={thumbnailSrc}
+                  alt=""
+                  loading="lazy"
+                />
+              )}
+              <div className="layering-result-question__content">
+                
+                <h3>{item.interactionLabel || item.sceneTitle}</h3>
+                <div className="layering-result-answers">
+                  <article className="layering-result-answer">
+                    <small>내 답변</small>
+                    <p>{item.answer?.answerValue || item.answer?.answerText || '응답 없음'}</p>
+                  </article>
+                </div>
+              </div>
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -500,6 +514,7 @@ function ResultPanel() {
   );
 }
 
+// 포트폴리오 포인트: 전체 통계 API 데이터를 참여자 수 시각화와 질문별 상세 통계 화면으로 분기합니다.
 function StatsPanel() {
   const canvasRef = useRef(null);
   const [statsStep, setStatsStep] = useState(0);
@@ -542,6 +557,7 @@ function StatsPanel() {
     : fallbackStatistics.summary.questions
   ).filter((question) => question.sceneCode !== 'SCENE_0');
 
+  // 포트폴리오 포인트: Matter.js 물리 엔진으로 참여자 1명당 1개 입자를 생성해 누적 참여량을 직관적으로 표현합니다.
   useEffect(() => {
     if (statsStep !== 0 || !canvasRef.current) return undefined;
     const canvas = canvasRef.current;
@@ -640,18 +656,25 @@ function StatsPanel() {
         </header>
         <div className="layering-question-grid">
           {questions.map((question, index) => {
-            const thumbnailSrc = getResultThumbnailSrc(question, index);
+            const thumbnailSrc = getResultThumbnailSrc(index);
             return (
               <button
                 key={question.sceneCode}
                 type="button"
                 className="layering-question-card"
-                style={thumbnailSrc ? { backgroundImage: `url(${thumbnailSrc})` } : undefined}
                 onClick={() => {
                   setSelectedQuestion({ ...question, thumbnailSrc });
                   setStatsStep(2);
                 }}
               >
+                {thumbnailSrc && (
+                  <img
+                    className="layering-question-card__image"
+                    src={thumbnailSrc}
+                    alt=""
+                    loading="lazy"
+                  />
+                )}
                 <span className="layering-question-thumb">{String(index + 1).padStart(2, '0')}</span>
                 <span className="layering-question-tap" aria-hidden="true">통계 보기</span>
               </button>
@@ -717,6 +740,7 @@ function StatsPanel() {
   );
 }
 
+// 포트폴리오 포인트: 모바일 중심 Step3 허브에서 4개 핵심 기능을 전면 모달 UX로 연결합니다.
 function Layering() {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(null);
@@ -729,6 +753,9 @@ function Layering() {
 
   return (
     <main className="layering-shell">
+      <div className="layering-scene" aria-hidden="true">
+        <img className="layering-scene__image" src={`${PUBLIC_ASSET_BASE}img/c_sum/C_sum_main.png`} alt="" />
+      </div>
       <section className="layering-phone">
         <div className="layering-menu-grid" aria-label="Step C 메뉴">
           <div className="layering-menu-spacer" aria-hidden="true" />
@@ -736,6 +763,7 @@ function Layering() {
             <button
               key={tab.id}
               className={`layering-menu-button layering-menu-button--${tab.id}`}
+              style={{ '--menu-bg-image': `url(${PUBLIC_ASSET_BASE}img/c_sum/${tab.image})` }}
               type="button"
               onClick={() => setActiveTab(tab.id)}
             >

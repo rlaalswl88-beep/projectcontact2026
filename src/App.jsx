@@ -16,8 +16,8 @@ const prevent = (e) => {
 };
 function App() {
     const location = useLocation();
-    const isStep2 = location.pathname === "/isolation/step2";
-    const isStep3 = location.pathname === "/isolation/step3";
+    const isStep2 = location.pathname.endsWith("/isolation/step2");
+    const isStep3 = location.pathname.endsWith("/isolation/step3");
     const [isMobileViewport, setIsMobileViewport] = useState(false);
 
     useEffect(() => {
@@ -49,6 +49,9 @@ function App() {
                         <Route path="/isolation/step1" element={<Branch />} />
                         <Route path="/isolation/step2" element={<Scrolling />} />
                         <Route path="/isolation/step3" element={<Layering />} />
+                        <Route path="/dongaProject/isolation/step1" element={<Branch />} />
+                        <Route path="/dongaProject/isolation/step2" element={<Scrolling />} />
+                        <Route path="/dongaProject/isolation/step3" element={<Layering />} />
                     </Routes>
                 </div>
             </div>
