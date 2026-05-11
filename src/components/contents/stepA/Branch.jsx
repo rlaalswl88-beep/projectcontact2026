@@ -473,80 +473,90 @@ export default function Branch() {
         </div>
         {showPanel && (
           <section className="stepa-player__panel stepa-player__panel--overlay">
-            {scene.interaction.type === 'none' && <p>다음 장면으로 이동 중...</p>}
+            {scene.interaction.type === 'none' && (
+              <p className="stepa-player__panel-title">다음 장면으로 이동 중...</p>
+            )}
 
             {scene.interaction.type === 'choice' && (
               <>
-                <p className="stepa-player__question">{scene.interaction.label}</p>
-                <div className="stepa-player__choices">
-                  {scene.interaction.options.map((option) => (
-                    <button
-                      key={option.id}
-                      type="button"
-                      className="stepa-player__choice-btn"
-                      onClick={() => saveChoice(option)}
-                    >
-                      {option.text}
-                    </button>
-                  ))}
+                <p className="stepa-player__panel-title">{scene.interaction.label}</p>
+                <div className="stepa-player__answer-field stepa-player__answer-field--choices">
+                  <div className="stepa-player__choices">
+                    {scene.interaction.options.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className="stepa-player__choice-btn"
+                        onClick={() => saveChoice(option)}
+                      >
+                        {option.text}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </>
             )}
 
             {scene.interaction.type === 'input' && (
               <>
-                <label className="stepa-player__question" htmlFor={scene.interaction.key}>
-                  {scene.interaction.label}
-                </label>
+                <p className="stepa-player__panel-title">{scene.interaction.label}</p>
                 {scene.sceneCode === 'SCENE_0' ? (
-                  <div className="stepa-player__intro-row">
-                    <input
-                      id="intro-name"
-                      type="text"
-                      className="stepa-player__choice-btn"
-                      value={introName}
-                      placeholder="이름 입력"
-                      onChange={(e) => {
-                        setIntroName(e.target.value);
-                        setExistingParticipant(null);
-                        setIntroResolvedParticipantId(null);
-                      }}
-                    />
-                    <input
-                      id="intro-age"
-                      type="number"
-                      className="stepa-player__choice-btn"
-                      value={introAge}
-                      placeholder="나이 입력"
-                      onChange={(e) => {
-                        setIntroAge(e.target.value);
-                        setExistingParticipant(null);
-                        setIntroResolvedParticipantId(null);
-                      }}
-                    />
-                    <select
-                      id="intro-gender"
-                      className="stepa-player__choice-btn stepa-player__intro-select"
-                      value={introGender}
-                      onChange={(e) => {
-                        setIntroGender(e.target.value);
-                        setExistingParticipant(null);
-                        setIntroResolvedParticipantId(null);
-                      }}
-                    >
-                      <option value="">성별 선택</option>
-                      <option value="M">남자</option>
-                      <option value="F">여자</option>
-                    </select>
+                  <div className="stepa-player__answer-field">
+                    <span className="stepa-player__answer-label">내 정보</span>
+                    <div className="stepa-player__intro-row">
+                      <input
+                        id="intro-name"
+                        type="text"
+                        className="stepa-player__choice-btn"
+                        value={introName}
+                        placeholder="이름 입력"
+                        onChange={(e) => {
+                          setIntroName(e.target.value);
+                          setExistingParticipant(null);
+                          setIntroResolvedParticipantId(null);
+                        }}
+                      />
+                      <input
+                        id="intro-age"
+                        type="number"
+                        className="stepa-player__choice-btn"
+                        value={introAge}
+                        placeholder="나이 입력"
+                        onChange={(e) => {
+                          setIntroAge(e.target.value);
+                          setExistingParticipant(null);
+                          setIntroResolvedParticipantId(null);
+                        }}
+                      />
+                      <select
+                        id="intro-gender"
+                        className="stepa-player__choice-btn stepa-player__intro-select"
+                        value={introGender}
+                        onChange={(e) => {
+                          setIntroGender(e.target.value);
+                          setExistingParticipant(null);
+                          setIntroResolvedParticipantId(null);
+                        }}
+                      >
+                        <option value="">성별 선택</option>
+                        <option value="M">남자</option>
+                        <option value="F">여자</option>
+                      </select>
+                    </div>
                   </div>
                 ) : (
-                  <textarea
-                    id={scene.interaction.key}
-                    className="stepa-player__textarea"
-                    value={draft}
-                    placeholder={scene.interaction.placeholder}
-                    onChange={(e) => setDraft(e.target.value)}
-                  />
+                  <div className="stepa-player__answer-field">
+                    <label className="stepa-player__answer-label" htmlFor={scene.interaction.key}>
+                      내 답변
+                    </label>
+                    <textarea
+                      id={scene.interaction.key}
+                      className="stepa-player__textarea stepa-player__textarea--in-field"
+                      value={draft}
+                      placeholder={scene.interaction.placeholder}
+                      onChange={(e) => setDraft(e.target.value)}
+                    />
+                  </div>
                 )}
                 <button
                   type="button"
