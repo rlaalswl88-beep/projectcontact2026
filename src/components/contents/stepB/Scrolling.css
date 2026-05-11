@@ -425,6 +425,22 @@ body:has(.scroll3d),
   display: none;
 }
 
+.scroll3d__transition-video {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  background: #000;
+}
+
+.scroll3d__transition-video video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .scroll3d__restore-effect {
   position: absolute;
   inset: -12%;

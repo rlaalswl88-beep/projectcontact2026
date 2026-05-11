@@ -73,6 +73,7 @@ const resultThumbnailExtByNumber = {
 };
 
 const PUBLIC_ASSET_BASE = import.meta.env.BASE_URL;
+const STEP3_BGM_SRC = `${PUBLIC_ASSET_BASE}audio/C_bgm.mp3`;
 
 // 보조 유틸: DB의 scene 순서와 정적 이미지 리소스를 동일한 인덱스 체계로 매칭합니다.
 function getResultThumbnailSrc(index) {
@@ -744,6 +745,38 @@ function StatsPanel() {
 function Layering() {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(null);
+  const [isBgmPlaying, setIsBgmPlaying] = useState(false);
+  const bgmRef = useRef(null);
+
+  const playBgm = () => {
+    const audio = bgmRef.current;
+    if (!audio) return;
+
+    audio.volume = 0.38;
+    audio.play()
+      .then(() => setIsBgmPlaying(true))
+      .catch(() => setIsBgmPlaying(false));
+  };
+
+  const pauseBgm = () => {
+    const audio = bgmRef.current;
+    if (!audio) return;
+
+    audio.pause();
+    setIsBgmPlaying(false);
+  };
+
+  const toggleBgm = () => {
+    const audio = bgmRef.current;
+    if (!audio) return;
+
+    if (audio.paused) {
+      playBgm();
+      return;
+    }
+
+    pauseBgm();
+  };
 
   useEffect(() => {
     if (location.state?.openTab === 'result') {
@@ -751,8 +784,30 @@ function Layering() {
     }
   }, [location.state]);
 
+  useEffect(() => {
+    playBgm();
+
+    const handleFirstInteraction = () => playBgm();
+    window.addEventListener('pointerdown', handleFirstInteraction, { once: true });
+    window.addEventListener('keydown', handleFirstInteraction, { once: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
+      const audio = bgmRef.current;
+      if (!audio) return;
+      audio.pause();
+      audio.currentTime = 0;
+      setIsBgmPlaying(false);
+    };
+  }, []);
+
   return (
     <main className="layering-shell">
+      <audio ref={bgmRef} src={STEP3_BGM_SRC} loop preload="auto" />
+      <button className="layering-bgm-toggle" type="button" onClick={toggleBgm}>
+        BGM {isBgmPlaying ? 'OFF' : 'ON'}
+      </button>
       <div className="layering-scene" aria-hidden="true">
         <img className="layering-scene__image" src={`${PUBLIC_ASSET_BASE}img/c_sum/C_sum_main.png`} alt="" />
       </div>

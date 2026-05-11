@@ -25,6 +25,8 @@ const USER_INFO_COOKIE_KEY = "isolation_user_info";
 const VALID_GENERATIONS = new Set(["YB", "OB"]);
 const PUBLIC_ASSET_BASE = import.meta.env.BASE_URL;
 const STEP2_BGM_SRC = `${PUBLIC_ASSET_BASE}audio/deepSea.mp3`;
+const STEP2_CLICK_SRC = `${PUBLIC_ASSET_BASE}audio/B_click.mp3`;
+const STEP2_TO_STEP3_VIDEO_SRC = `${PUBLIC_ASSET_BASE}video/cutscenes/C_B_VID.mp4`;
 
 function getCookieValue(key) {
   if (typeof document === "undefined") return null;
@@ -344,6 +346,8 @@ function Scrolling() {
   const pointerPointRef = useRef(null);
   const restoreEffectTimeoutRef = useRef(0);
   const bgmRef = useRef(null);
+  const clickAudioRef = useRef(null);
+  const transitionVideoRef = useRef(null);
 
   const targetLookRef = useRef({ x: 0, y: 0 });
   const desiredLookRef = useRef({ x: 0, y: 0 });
@@ -373,6 +377,7 @@ function Scrolling() {
   const [activeHeadlineFlashIds, setActiveHeadlineFlashIds] = useState(() => new Set());
   const [restoreEffectKey, setRestoreEffectKey] = useState(0);
   const [restoreEffectActive, setRestoreEffectActive] = useState(false);
+  const [transitionVideoActive, setTransitionVideoActive] = useState(false);
   const destinationActive = scrollProgress > 0.955;
 
   const depthItems = useMemo(buildDepthItems, []);
@@ -391,12 +396,35 @@ function Scrolling() {
     );
   }, []);
 
-  const playBgm = useCallback(() => {
+  const startBgmAudio = useCallback(() => {
     const audio = bgmRef.current;
     if (!audio) return;
 
     audio.volume = 0.42;
+    audio.muted = false;
     audio.play().catch(() => {});
+  }, []);
+
+  const playBgm = useCallback(() => {
+    if (transitionVideoActive) return;
+    startBgmAudio();
+  }, [startBgmAudio, transitionVideoActive]);
+
+  const playClickAudio = useCallback(() => {
+    const audio = clickAudioRef.current;
+    if (!audio) return;
+
+    audio.currentTime = 0;
+    audio.volume = 0.82;
+    audio.play().catch(() => {});
+  }, []);
+
+  const stopBgm = useCallback(() => {
+    const audio = bgmRef.current;
+    if (!audio) return;
+
+    audio.pause();
+    audio.currentTime = 0;
   }, []);
 
   useEffect(() => {
@@ -411,13 +439,23 @@ function Scrolling() {
 
   useEffect(() => {
     playBgm();
+
+    const handleFirstInteraction = () => playBgm();
+    window.addEventListener("pointerdown", handleFirstInteraction, { capture: true });
+    window.addEventListener("click", handleFirstInteraction, { capture: true });
+    window.addEventListener("wheel", handleFirstInteraction, { passive: true });
+    window.addEventListener("touchstart", handleFirstInteraction, { passive: true });
+    window.addEventListener("keydown", handleFirstInteraction);
+
     return () => {
-      const audio = bgmRef.current;
-      if (!audio) return;
-      audio.pause();
-      audio.currentTime = 0;
+      window.removeEventListener("pointerdown", handleFirstInteraction, { capture: true });
+      window.removeEventListener("click", handleFirstInteraction, { capture: true });
+      window.removeEventListener("wheel", handleFirstInteraction);
+      window.removeEventListener("touchstart", handleFirstInteraction);
+      window.removeEventListener("keydown", handleFirstInteraction);
+      stopBgm();
     };
-  }, [playBgm]);
+  }, [playBgm, stopBgm]);
 
   useEffect(() => {
     return () => {
@@ -652,9 +690,7 @@ function Scrolling() {
             scrollVelocityRef.current = lerp(scrollVelocityRef.current, 0, 0.22);
             if (shouldNavigateAfterRestoreRef.current) {
               shouldNavigateAfterRestoreRef.current = false;
-              window.setTimeout(() => {
-                navigate("/isolation/step3");
-              }, 80);
+              setTransitionVideoActive(true);
             }
             return 0;
           }
@@ -748,6 +784,7 @@ function Scrolling() {
   }, [gyroEnabled]);
 
   const handlePointerDown = (event) => {
+    playBgm();
     if (event.target.closest("button")) return;
 
     dragStartRef.current = {
@@ -842,6 +879,7 @@ function Scrolling() {
   const handleRestoreScroll = (event) => {
     event?.preventDefault();
     event?.stopPropagation();
+    playClickAudio();
 
     desiredLookRef.current = { x: 0, y: 0 };
     setRestoreEffectKey((key) => key + 1);
@@ -858,6 +896,22 @@ function Scrolling() {
     scrollInputRef.current = 1;
     pointerMotionRef.current = 0.8;
     window.scrollTo({ top: 0, behavior: "auto" });
+  };
+
+  const handleTransitionVideoReady = () => {
+    stopBgm();
+    const video = transitionVideoRef.current;
+    if (!video) return;
+
+    video.muted = false;
+    video.volume = 1;
+    video.play().catch(() => {
+      navigate("/isolation/step3");
+    });
+  };
+
+  const handleTransitionVideoEnd = () => {
+    navigate("/isolation/step3");
   };
 
   const cameraZ = scrollProgress * DEPTH;
@@ -884,6 +938,21 @@ function Scrolling() {
   return (
     <section className="scroll3d" ref={shellRef}>
       <audio ref={bgmRef} src={STEP2_BGM_SRC} loop preload="auto" />
+      <audio ref={clickAudioRef} src={STEP2_CLICK_SRC} preload="auto" />
+      {transitionVideoActive && (
+        <div className="scroll3d__transition-video" aria-hidden>
+          <video
+            ref={transitionVideoRef}
+            src={STEP2_TO_STEP3_VIDEO_SRC}
+            playsInline
+            autoPlay
+            preload="auto"
+            onCanPlay={handleTransitionVideoReady}
+            onEnded={handleTransitionVideoEnd}
+            onError={handleTransitionVideoEnd}
+          />
+        </div>
+      )}
       <div
         className="scroll3d__viewport"
         ref={viewportRef}
