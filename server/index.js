@@ -4,6 +4,7 @@ import express from 'express';
 import healthRoutes from './routes/healthRoutes.js';
 import isolationRoutes from './routes/isolationRoutes.js';
 import sceneRoutes from './routes/sceneRoutes.js';
+import contentBRoutes from './routes/contentBRoutes.js';
 import warmMessageRoutes from './routes/warmMessageRoutes.js';
 import { reprocessPendingWarmMessages } from './services/warmMessageService.js';
 
@@ -17,6 +18,7 @@ app.use(express.json());
 app.use('/api', healthRoutes);
 app.use('/api/scenes', sceneRoutes);
 app.use('/api/isolation', isolationRoutes);
+app.use('/api/content-b', contentBRoutes);
 app.use('/api/warm', warmMessageRoutes);
 
 app.listen(PORT, () => {

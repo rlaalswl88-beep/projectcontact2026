@@ -1,6 +1,6 @@
 ﻿import { AnimatePresence, motion } from 'framer-motion';
 import Matter from 'matter-js';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import './Layering.css';
 
@@ -75,6 +75,34 @@ const resultThumbnailExtByNumber = {
 const PUBLIC_ASSET_BASE = import.meta.env.BASE_URL;
 const STEP3_BGM_SRC = `${PUBLIC_ASSET_BASE}audio/C_bgm.mp3`;
 
+const INFO_PAGE_SIZE = 10;
+
+const INFO_CATEGORIES = [
+  { type: 1, label: '관련기사' },
+  { type: 2, label: '관련기관' },
+  { type: 3, label: '관련 논문' },
+  { type: 4, label: '관련 척도' },
+];
+
+/** link/url: 외부 http(s)는 그대로, 그 외(파일명 등)는 public/file 기준 PDF·정적 파일 */
+function resolveContentItemHref(linkOrUrl) {
+  if (!linkOrUrl || !String(linkOrUrl).trim()) {
+    return null;
+  }
+  const raw = String(linkOrUrl).trim();
+  if (/^https?:\/\//i.test(raw)) {
+    return raw;
+  }
+  const normalized = raw.replace(/^\/+/, '').replace(/^file\/+/i, '');
+  const parts = normalized.split('/').filter(Boolean);
+  if (parts.length === 0) return null;
+  const encodedPath = parts.map((p) => encodeURIComponent(p)).join('/');
+  const base =
+    PUBLIC_ASSET_BASE.endsWith('/') ? PUBLIC_ASSET_BASE.slice(0, -1) : PUBLIC_ASSET_BASE;
+  const pathPrefix = `${base}/file/${encodedPath}`;
+  return pathPrefix;
+}
+
 // 보조 유틸: DB의 scene 순서와 정적 이미지 리소스를 동일한 인덱스 체계로 매칭합니다.
 function getResultThumbnailSrc(index) {
   const thumbnailNumber = String(index + 1).padStart(4, '0');
@@ -135,15 +163,162 @@ function MobileModal({ activeTab, onClose }) {
 }
 
 function InfoPanel() {
+  const [subType, setSubType] = useState(1);
+  const [items, setItems] = useState([]);
+  const [nextOffset, setNextOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState('');
+  const listScrollRef = useRef(null);
+  const fetchLockRef = useRef(false);
+
+  const loadMore = useCallback(async () => {
+    if (!hasMore || loading || loadingMore || fetchLockRef.current) {
+      return;
+    }
+    fetchLockRef.current = true;
+    setLoadingMore(true);
+    try {
+      const qs = new URLSearchParams({
+        type: String(subType),
+        limit: String(INFO_PAGE_SIZE),
+        offset: String(nextOffset),
+      });
+      const response = await fetch(`/api/content-b/items?${qs}`);
+      if (!response.ok) {
+        throw new Error('추가 목록을 불러오지 못했습니다.');
+      }
+      const data = await response.json();
+      const chunk = data.items ?? [];
+      setItems((prev) => [...prev, ...chunk]);
+      setHasMore(Boolean(data.hasMore));
+      setNextOffset((prev) => prev + chunk.length);
+    } catch {
+      /* 스크롤 재시도 허용 */
+    } finally {
+      fetchLockRef.current = false;
+      setLoadingMore(false);
+    }
+  }, [subType, hasMore, loading, loadingMore, nextOffset]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchLockRef.current = false;
+
+    async function loadFirst() {
+      setLoading(true);
+      setError('');
+      setItems([]);
+      setHasMore(false);
+      setNextOffset(0);
+      try {
+        const qs = new URLSearchParams({
+          type: String(subType),
+          limit: String(INFO_PAGE_SIZE),
+          offset: '0',
+        });
+        const response = await fetch(`/api/content-b/items?${qs}`);
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body.error || body.detail || '목록을 불러오지 못했습니다.');
+        }
+        const data = await response.json();
+        if (cancelled) return;
+        const chunk = data.items ?? [];
+        setItems(chunk);
+        setHasMore(Boolean(data.hasMore));
+        setNextOffset(chunk.length);
+        if (listScrollRef.current) {
+          listScrollRef.current.scrollTop = 0;
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(e.message || '오류가 발생했습니다.');
+          setItems([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadFirst();
+    return () => {
+      cancelled = true;
+    };
+  }, [subType]);
+
+  function handleListScroll(e) {
+    const el = e.currentTarget;
+    const threshold = 96;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight > threshold) {
+      return;
+    }
+    loadMore();
+  }
+
   return (
-    <div className="layering-panel">
+    <div className="layering-panel layering-panel--info">
       <span className="layering-panel__eyebrow">Related Articles</span>
       <h2>응답과 연결된 기사와 정보를 모았습니다</h2>
-      <p>고립, 관계, 일상 회복처럼 설문에서 드러난 신호를 더 깊게 읽을 수 있는 자료 영역입니다.</p>
-      <div className="layering-info-grid">
-        <div><strong>관련 키워드</strong><span>고립, 관계, 회복</span></div>
-        <div><strong>연령 분기</strong><span>YB / OB</span></div>
-        <div><strong>데이터 기준</strong><span>설문 응답 관계</span></div>
+      <p className="layering-info-lead">
+        고립, 관계, 일상 회복처럼 설문에서 드러난 신호를 더 깊게 읽을 수 있는 자료 영역입니다.
+      </p>
+
+      <div className="layering-info-tabs" role="tablist" aria-label="자료 유형">
+        {INFO_CATEGORIES.map((c) => (
+          <button
+            key={c.type}
+            type="button"
+            role="tab"
+            aria-selected={subType === c.type}
+            className={`layering-info-tab${subType === c.type ? ' layering-info-tab--active' : ''}`}
+            onClick={() => setSubType(c.type)}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      <div
+        ref={listScrollRef}
+        className="layering-info-scroll"
+        onScroll={handleListScroll}
+      >
+        {loading && <p className="layering-info-status">불러오는 중...</p>}
+
+        {!loading && error && <p className="layering-info-error">{error}</p>}
+
+        {!loading && !error && items.length === 0 && (
+          <p className="layering-info-empty">등록된 자료가 없습니다.</p>
+        )}
+
+        {!loading &&
+          !error &&
+          items.map((item) => {
+            const href = resolveContentItemHref(item.url);
+            return href ? (
+              <a
+                key={`${subType}-${item.id}`}
+                href={href}
+                className="layering-info-card layering-info-card--link"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <h3 className="layering-info-card__title">{item.title}</h3>
+                {item.summary ? <p className="layering-info-card__summary">{item.summary}</p> : null}
+              </a>
+            ) : (
+              <article key={`${subType}-${item.id}`} className="layering-info-card">
+                <h3 className="layering-info-card__title">{item.title}</h3>
+                {item.summary ? <p className="layering-info-card__summary">{item.summary}</p> : null}
+              </article>
+            );
+          })}
+
+        {loadingMore && (
+          <p className="layering-info-status layering-info-status--more">더 불러오는 중...</p>
+        )}
       </div>
     </div>
   );
