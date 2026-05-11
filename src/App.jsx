@@ -16,6 +16,7 @@ const prevent = (e) => {
 };
 function App() {
     const location = useLocation();
+    const isStep1 = location.pathname.endsWith("/isolation/step1");
     const isStep2 = location.pathname.endsWith("/isolation/step2");
     const isStep3 = location.pathname.endsWith("/isolation/step3");
     const [isMobileViewport, setIsMobileViewport] = useState(false);
@@ -30,11 +31,12 @@ function App() {
         return () => mediaQuery.removeEventListener("change", syncViewport);
     }, []);
 
-    const hideChrome = isStep2 || (isStep3 && isMobileViewport);
+    const hideNav = isStep2 || (isStep3 && isMobileViewport);
+    const hideFooter = isStep1 || isStep2 || (isStep3 && isMobileViewport);
 
     return (
         <div id="wrapper" className="adaptive">
-            {!hideChrome && <Nav />}
+            {!hideNav && <Nav />}
             <div id="container">
                 <div id="content" className="main_content">
                     <Routes>
@@ -55,7 +57,7 @@ function App() {
                     </Routes>
                 </div>
             </div>
-            {!hideChrome && <Footer />}
+            {!hideFooter && <Footer />}
         </div>
     );
 }

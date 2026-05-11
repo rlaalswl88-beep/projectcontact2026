@@ -7,6 +7,8 @@ const INTERACTION_POINT = 0.72;
 const INTRO_SCENE_CODE = 'SCENE_0';
 const OPTIONAL_INPUT_SCENE_CODE = 'SCENE_3';
 const INTRO_BRIDGE_VIDEO = 'SCENE_0-2.mp4';
+/** public/video/cutscenes/A_Bcut.mp4 */
+const AB_CUTSCENE_RELATIVE = 'cutscenes/A_Bcut.mp4';
 
 function videoUrlForName(name) {
   if (!name) {
@@ -23,6 +25,13 @@ function videoUrlForScene(scene) {
   }
   const name = scene.video ?? `${scene.sceneCode}.mp4`;
   return videoUrlForName(name);
+}
+
+function abCutsceneVideoUrl() {
+  const base = import.meta.env.BASE_URL || '/';
+  const prefix = base.endsWith('/') ? base : `${base}/`;
+  const segments = AB_CUTSCENE_RELATIVE.split('/').filter(Boolean).map((s) => encodeURIComponent(s));
+  return `${prefix}video/${segments.join('/')}`;
 }
 
 function getProgress(ms) {
@@ -68,6 +77,8 @@ export default function Branch() {
   const [existingParticipant, setExistingParticipant] = useState(null);
   const [checkingExisting, setCheckingExisting] = useState(false);
   const [introResolvedParticipantId, setIntroResolvedParticipantId] = useState(null);
+  const [showAbCutscene, setShowAbCutscene] = useState(false);
+  const abCutsceneVideoRef = useRef(null);
 
   const scene = scenes[sceneIndex];
   const sceneCodeToIndex = useMemo(
@@ -91,6 +102,25 @@ export default function Branch() {
   const isLastScene = sceneIndex === scenes.length - 1;
   const canAutoNext = scene?.interaction?.type === 'none';
   const panelOpenProgress = (isIntroScene || playingIntroBridge) ? 100 : INTERACTION_POINT * 100;
+
+  useEffect(() => {
+    if (!showAbCutscene) {
+      return undefined;
+    }
+    const v = abCutsceneVideoRef.current;
+    if (!v) {
+      return undefined;
+    }
+    const endAndGo = () => {
+      setShowAbCutscene(false);
+      setSubmitting(false);
+      navigate('/isolation/step2');
+    };
+    v.play().catch(() => {
+      endAndGo();
+    });
+    return undefined;
+  }, [showAbCutscene, navigate]);
 
   useEffect(() => {
     const loadScenes = async () => {
@@ -406,11 +436,11 @@ export default function Branch() {
       gender: introGender,
     };
 
-    // StepB에서 즉시 참조할 수 있도록 최소 프로필을 먼저 저장하고 화면을 전환한다.
+    // StepB 전 A→B 컷씬 재생 후 이동. 프로필은 먼저 저장.
     setStepProfileCookie(fallbackProfile);
-    navigate('/isolation/step2');
+    setShowAbCutscene(true);
 
-    // 분석은 화면 전환 후에도 백그라운드로 계속 진행한다.
+    // 분석은 컷씬 재생 중·이후에도 백그라운드로 계속 진행한다.
     fetch(apiUrl('/api/isolation/analyze'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -443,15 +473,16 @@ export default function Branch() {
   }
 
   return (
+    <>
     <div className="stepa-player">
       <header className="stepa-player__header">
-        <strong>StepA Demo Interactive</strong>
         <span>
           Scene {scene.id} / {scenes.length}
         </span>
       </header>
 
-      <div className="stepa-player__video">
+      <div className="stepa-player__video-stage">
+        <div className="stepa-player__video">
         {effectiveVideoSrc ? (
           <video
             key={`${sceneIndex}-${playingIntroBridge ? 'bridge' : 'scene'}`}
@@ -459,7 +490,6 @@ export default function Branch() {
             className="stepa-player__video-el"
             src={effectiveVideoSrc}
             playsInline
-            muted
             preload="auto"
             onError={handleVideoError}
           />
@@ -593,7 +623,7 @@ export default function Branch() {
               <button
                 type="button"
                 className="btn-save stepa-player__submit-btn"
-                disabled={submitting}
+                disabled={submitting || showAbCutscene}
                 onClick={submitAll}
               >
                 {submitting ? '분석 중...' : '결과 저장/분석'}
@@ -601,6 +631,7 @@ export default function Branch() {
             )}
           </section>
         )}
+      </div>
       </div>
 
       <footer className="stepa-player__footer">
@@ -623,5 +654,28 @@ export default function Branch() {
         </section>
       )}
     </div>
+
+    {showAbCutscene ? (
+      <div className="stepa-ab-cutscene" aria-hidden={false}>
+        <video
+          ref={abCutsceneVideoRef}
+          className="stepa-ab-cutscene__video"
+          src={abCutsceneVideoUrl()}
+          playsInline
+          preload="auto"
+          onEnded={() => {
+            setShowAbCutscene(false);
+            setSubmitting(false);
+            navigate('/isolation/step2');
+          }}
+          onError={() => {
+            setShowAbCutscene(false);
+            setSubmitting(false);
+            navigate('/isolation/step2');
+          }}
+        />
+      </div>
+    ) : null}
+    </>
   );
 }

@@ -1,16 +1,44 @@
 .stepa-player {
   width: min(100%, 430px);
   margin: 0 auto;
-  padding: 0.75rem;
+  padding: 0.5rem 0.75rem;
   color: #e9edf4;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  /* Nav(#header_adaptive) + border 등이 54px보다 클 수 있어, 작게 잡으면 전체 높이가 뷰포트를 넘어 스크롤 발생 */
+  min-height: calc(100svh - 80px);
+}
+
+.stepa-ab-cutscene {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepa-ab-cutscene__video {
+  width: 100%;
+  height: 100%;
+  max-height: 100dvh;
+  object-fit: contain;
+}
+
+.stepa-player__video-stage {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  width: 100%;
 }
 
 .stepa-player__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75rem;
-  font-size: 0.9rem;
+  display: none;
 }
 
 .stepa-player__video {
@@ -50,9 +78,16 @@
   top: 0;
   left: 0;
   right: 0;
-  padding: 1rem;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.12));
+  padding: 0;
+  background: transparent;
+  pointer-events: none;
   z-index: 2;
+}
+
+.stepa-player__scene-title,
+.stepa-player__scene-copy,
+.stepa-player__progress-track {
+  display: none;
 }
 
 .stepa-player__scene-title {
@@ -99,6 +134,7 @@
   margin: 0 0.65rem 0.85rem;
   background: #3c3c3c;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
 }
 
 .stepa-player__panel-title {
@@ -222,11 +258,7 @@
 }
 
 .stepa-player__footer {
-  margin-top: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.75rem;
+  display: none;
 }
 
 @media (max-width: 480px) {
@@ -235,13 +267,9 @@
     padding: 0.5rem;
   }
 
-  .stepa-player__header {
-    font-size: 0.8rem;
-    margin-bottom: 0.5rem;
-  }
-
   .stepa-player__video-overlay {
-    padding: 0.75rem;
+    padding: 0;
+    background: transparent;
   }
 
   .stepa-player__panel--overlay {
@@ -271,11 +299,6 @@
 
   .stepa-player__existing-actions {
     grid-template-columns: 1fr;
-  }
-
-  .stepa-player__footer {
-    flex-direction: column;
-    align-items: stretch;
   }
 }
 
