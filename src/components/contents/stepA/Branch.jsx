@@ -53,6 +53,21 @@ function setStepProfileCookie(profile) {
   document.cookie = `${STEP_PROFILE_COOKIE}=${encoded}; path=/; max-age=${60 * 60 * 24}`;
 }
 
+const STEP_A_ASSET_BASE = (import.meta.env.BASE_URL || '/').replace(/\/?$/, '/');
+
+function StepAStage({ children }) {
+  return (
+    <div
+      className="stepa-player-page"
+      style={{
+        '--stepa-bg-image': `url("${STEP_A_ASSET_BASE}img/A/a_con.png")`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function Branch() {
   const navigate = useNavigate();
   const videoRef = useRef(null);
@@ -100,7 +115,8 @@ export default function Branch() {
 
   const progress = effectiveVideoSrc ? Math.min(100, Math.round(videoProgress)) : getProgress(elapsedMs);
   const isLastScene = sceneIndex === scenes.length - 1;
-  const canAutoNext = scene?.interaction?.type === 'none';
+  const interaction = scene?.interaction;
+  const canAutoNext = interaction?.type === 'none';
   const panelOpenProgress = (isIntroScene || playingIntroBridge) ? 100 : INTERACTION_POINT * 100;
 
   useEffect(() => {
@@ -228,7 +244,7 @@ export default function Branch() {
       }
 
       if (
-        scene.interaction.type !== 'none' &&
+        interaction?.type !== 'none' &&
         v.currentTime >= d * INTERACTION_POINT &&
         !pausedForChoiceRef.current &&
         !isIntroScene &&
@@ -247,7 +263,7 @@ export default function Branch() {
       }
       setVideoProgress(100);
       setShowPanel(true);
-      if (scene.interaction.type === 'none') {
+      if (interaction?.type === 'none') {
         window.setTimeout(() => {
           setSceneIndex((prev) => Math.min(prev + 1, scenes.length - 1));
         }, 500);
@@ -461,19 +477,36 @@ export default function Branch() {
   };
 
   if (loadingScenes) {
-    return <div className="stepa-player">씬 데이터를 불러오는 중...</div>;
+    return (
+      <StepAStage>
+        <div className="stepa-player">씬 데이터를 불러오는 중...</div>
+      </StepAStage>
+    );
   }
 
   if (!scene) {
     return (
-      <div className="stepa-player">
-        <p className="stepa-player__error">{errorMessage || '씬 데이터가 없습니다.'}</p>
-      </div>
+      <StepAStage>
+        <div className="stepa-player">
+          <p className="stepa-player__error">{errorMessage || '씬 데이터가 없습니다.'}</p>
+        </div>
+      </StepAStage>
+    );
+  }
+
+  if (!scene.interaction) {
+    return (
+      <StepAStage>
+        <div className="stepa-player">
+          <p className="stepa-player__error">씬 설정이 올바르지 않습니다.</p>
+        </div>
+      </StepAStage>
     );
   }
 
   return (
     <>
+    <StepAStage>
     <div className="stepa-player">
       <header className="stepa-player__header">
         <span>
@@ -654,6 +687,7 @@ export default function Branch() {
         </section>
       )}
     </div>
+    </StepAStage>
 
     {showAbCutscene ? (
       <div className="stepa-ab-cutscene" aria-hidden={false}>

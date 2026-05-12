@@ -6,7 +6,7 @@ const prevent = (e) => {
 };
 
 function TopStories() {
-    const { topStories } = useSelector((state) => state);
+    const topStories = useSelector((state) => state.topStories);
     return (
         <div>
             <div className="top_menu">

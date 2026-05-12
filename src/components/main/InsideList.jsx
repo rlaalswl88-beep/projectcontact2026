@@ -4,7 +4,7 @@ const prevent = (e) => {
     e.preventDefault();
 };
 function InsideList() {
-    const { insideList } = useSelector((state) => state);
+    const insideList = useSelector((state) => state.insideList);
     return (
         <div className="main_inside">
             <div className="tit_cont">

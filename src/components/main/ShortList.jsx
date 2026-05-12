@@ -4,7 +4,7 @@ const prevent = (e) => {
     e.preventDefault();
 };
 function ShortList() {
-    const { shortList } = useSelector((state) => state);
+    const shortList = useSelector((state) => state.shortList);
     return (
         <div className="main_short">
             <div className="tit_cont">

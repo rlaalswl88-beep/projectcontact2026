@@ -19,6 +19,85 @@ body {
   display: block;
 }
 
+#root:has(.stepa-player-page) {
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+  background-color: #0e1218;
+}
+
+/* Step A: 한 화면 고정, 세로 스크롤 제거 */
+html:has(.stepa-player-page),
+body:has(.stepa-player-page) {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  background-color: #0e1218;
+  /* 동아 base.css scrollbar-gutter: stable — 오른쪽 예약 띠 제거 */
+  scrollbar-gutter: auto;
+}
+
+#wrapper.adaptive:has(.stepa-player-page) {
+  background-color: #0e1218;
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  width: 100%;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* adaptive_pc: header_type2 .inner 고정폭 → Step A에서는 뷰포트 너비에 맞춤 */
+#wrapper.adaptive:has(.stepa-player-page) #header_adaptive.header_type2 .main_head > .inner,
+#wrapper.adaptive:has(.stepa-player-page)
+  #header_adaptive.is_fix.header_type2
+  .main_head
+  .inner {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+#wrapper.adaptive:has(.stepa-player-page) #header_adaptive.header_type2,
+#wrapper.adaptive:has(.stepa-player-page) #header_adaptive.header_type2 .main_head {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+#wrapper.adaptive:has(.stepa-player-page) #container {
+  background-color: #0e1218;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  min-width: 0;
+  align-self: stretch;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#content.main_content:has(.stepa-player-page) {
+  background-color: #0e1218;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  min-width: 0;
+  align-self: stretch;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 #svg_icon {
   position: absolute;
   width: 0;
@@ -39,6 +118,16 @@ body {
     margin: 0 auto;
     background: #fff;
     min-height: 100vh;
+  }
+
+  /* Step A: 폰 폭(390px) 제한 해제 — 오른쪽 흰 여백 제거 */
+  #wrapper.adaptive:has(.stepa-player-page) {
+    max-width: none !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    background-color: #0e1218;
+    min-height: 100dvh;
   }
 
   #header_adaptive.header_type2 {

@@ -5,7 +5,7 @@ const prevent = (e) => {
 };
 
 function Header() {
-    const { nav } = useSelector((state) => state);
+    const nav = useSelector((state) => state.nav);
   return (
       <header id="header_adaptive" className="header_type2">
           <div className="main_head">

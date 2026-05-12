@@ -1,3 +1,42 @@
+#content {
+  padding-bottom: 0 !important;
+}
+
+.stepa-player-page {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: none;
+  align-self: stretch;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+}
+
+.stepa-player-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-color: #0e1218;
+  background-image: var(--stepa-bg-image);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+}
+
+.stepa-player-page > .stepa-player {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: min(100%, 430px);
+}
+
 .stepa-player {
   width: min(100%, 430px);
   margin: 0 auto;
@@ -7,8 +46,6 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  /* Nav(#header_adaptive) + border 등이 54px보다 클 수 있어, 작게 잡으면 전체 높이가 뷰포트를 넘어 스크롤 발생 */
-  min-height: calc(100svh - 80px);
 }
 
 .stepa-ab-cutscene {
@@ -31,8 +68,9 @@
 .stepa-player__video-stage {
   flex: 1 1 auto;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
+  align-items: stretch;
   min-height: 0;
   width: 100%;
 }
@@ -275,9 +313,8 @@
   .stepa-player__panel--overlay {
     left: 0.5rem;
     right: 0.5rem;
-    bottom: 16%;
-    margin-left: 0;
-    margin-right: 0;
+    bottom: 0;
+    margin: 0 0.5rem 0.75rem;
     padding: 1rem;
   }
 

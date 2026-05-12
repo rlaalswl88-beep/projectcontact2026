@@ -31,7 +31,7 @@ function App() {
         return () => mediaQuery.removeEventListener("change", syncViewport);
     }, []);
 
-    const hideNav = isStep2 || (isStep3 && isMobileViewport);
+    const hideNav = (isStep1 && isMobileViewport) || isStep2 || (isStep3 && isMobileViewport);
     const hideFooter = isStep1 || isStep2 || (isStep3 && isMobileViewport);
 
     return (
