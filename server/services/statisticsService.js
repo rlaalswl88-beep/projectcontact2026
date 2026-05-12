@@ -58,7 +58,6 @@ function getAnswerType(interactionType) {
   return interactionType === 'choice' ? 'option_id' : 'answer_text_feeling';
 }
 
-// ?ы듃?대━???ъ씤?? choice/input ?듬???媛숈? 吏묎퀎 援ъ“濡??뺢퇋?뷀빐 count? percentage瑜?怨꾩궛?⑸땲??
 function aggregateQuestionAnswers(question) {
   const answersByKey = new Map();
 
@@ -88,7 +87,6 @@ function aggregateQuestionAnswers(question) {
     .sort((a, b) => b.count - a.count);
 }
 
-// ?ы듃?대━???ъ씤?? SQL 吏묎퀎 row瑜?洹몃옒???몃뱶, ?붿빟 ?듦퀎, 吏덈Ц蹂?李⑦듃 ?곗씠?곕줈 蹂?섑븯??API ?대뙌?곗엯?덈떎.
 
 function buildStatisticsPayload(statRows, participantRows) {
   const groupTotals = new Map();

@@ -75,7 +75,6 @@ async function getScanner() {
   return scannerPromise;
 }
 
-// ?ы듃?대━???ъ씤?? 1李??꾪꽣?먯꽌 Trie 湲곕컲 湲덉튃??寃?됱쑝濡?LLM ?몄텧 ??鍮꾩슜怨??묐떟 吏?곗쓣 以꾩엯?덈떎.
 async function runListFilter({ nickname, message }) {
   const scanner = await getScanner();
   const nicknameScan = scanner.search(nickname);
@@ -112,7 +111,6 @@ function normalizeLlmResult(value) {
   return { result, target };
 }
 
-// ?ы듃?대━???ъ씤?? 2李??꾪꽣?먯꽌 RAG ?꾨＼?꾪듃? GPT JSON ?묐떟???ъ슜??臾몃㎘ 湲곕컲 寃?댁쓣 ?섑뻾?⑸땲??
 async function runLlmFilter({ nickname, message }) {
   const apiKey = process.env.OPENAI_API_KEY ?? '';
   const model = process.env.OPENAI_WARM_FILTER_MODEL ?? process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
@@ -150,7 +148,6 @@ async function runLlmFilter({ nickname, message }) {
   return normalizeLlmResult(parsed);
 }
 
-// ?ы듃?대━???ъ씤?? 寃??寃곌낵瑜??몃텇?뷀빐 ?됰꽕???꾨컲? 移섑솚?섍퀬 硫붿떆吏 ?꾨컲? ?④린???뺤콉??DB??諛섏쁺?⑸땲??
 async function applyModerationResult({ messageId, result, target }) {
   if (result === 'PASS') {
     await updateCheerMessageStatus({ id: messageId, status: 'PASS' });
@@ -179,7 +176,6 @@ async function moderateMessageInBackground({ messageId, nickname, message }) {
   }
 }
 
-// ?낅젰 寃利? 由ъ뒪???꾪꽣, DB ??? 鍮꾨룞湲?LLM 寃?대줈 ?댁뼱吏???섏씠釉뚮━??寃???뚯씠?꾨씪?몄엯?덈떎.
 export async function moderateMessage({ userId = null, nickname, message }) {
   const cleanNickname = String(nickname ?? '').trim();
   const cleanMessage = String(message ?? '').trim();
@@ -245,7 +241,6 @@ export async function getMyWarmMessages({ userId, limit } = {}) {
   return findPassedCheerMessagesByUserId({ userId, limit });
 }
 
-// ?ы듃?대━???ъ씤?? ?쒕쾭 ?μ븷???ъ떆???꾩뿉??PENDING 硫붿떆吏瑜??ъ쿂由ы빐 ?곗씠???뺥빀?깆쓣 蹂듦뎄?⑸땲??
 export async function reprocessPendingWarmMessages({ limit = 50 } = {}) {
   const pendingMessages = await findPendingCheerMessages({ limit });
   pendingMessages.forEach((item) => {

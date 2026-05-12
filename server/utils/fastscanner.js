@@ -5,7 +5,6 @@
   }
 }
 
-// ?ы듃?대━???ъ씤?? ?뱀닔臾몄옄, 諛섎났臾몄옄, leetspeak瑜??뺢퇋?뷀빐 湲덉튃???고쉶 ?낅젰??以꾩엯?덈떎.
 function normalizeText(value) {
   const leetMap = {
     0: 'o',
@@ -23,10 +22,9 @@ function normalizeText(value) {
     .toLowerCase()
     .replace(/[013457@$]/g, (char) => leetMap[char] ?? char)
     .replace(/(.)\1{2,}/g, '$1$1')
-    .replace(/[^a-z0-9媛-?ｃ꽦-?롢뀖-?ａ?-??/g, '');
+    .replace(/[^a-z0-9가-힣ㄱ-ㅎㅏ-ㅣᄀ-ᇿ]/g, '');
 }
 
-// ?ы듃?대━???ъ씤?? Trie ?먮즺援ъ“濡????湲덉튃??紐⑸줉??鍮좊Ⅴ寃??먯깋?섎뒗 而ㅼ뒪? ?꾪꽣 ?붿쭊?낅땲??
 export class FastScanner {
   constructor(words = []) {
     this.root = new TrieNode();
