@@ -1,0 +1,51 @@
+- main [ref=e6]:
+  - button "BGM OFF" [ref=e31] [cursor=pointer]
+  - generic [ref=e8]:
+    - generic "Step C 메뉴" [ref=e9]:
+      - button "01 Related Articles 관련기사&정보" [ref=e11] [cursor=pointer]:
+        - generic [ref=e12]: "01"
+        - generic [ref=e13]:
+          - generic [ref=e14]: Related Articles
+          - strong [ref=e15]: 관련기사&정보
+      - button "02 Warm Message 따뜻한 한마디" [ref=e16] [cursor=pointer]:
+        - generic [ref=e17]: "02"
+        - generic [ref=e18]:
+          - generic [ref=e19]: Warm Message
+          - strong [ref=e20]: 따뜻한 한마디
+      - button "03 Survey Result 설문결과" [active] [ref=e21] [cursor=pointer]:
+        - generic [ref=e22]: "03"
+        - generic [ref=e23]:
+          - generic [ref=e24]: Survey Result
+          - strong [ref=e25]: 설문결과
+      - button "04 Statistics 통계" [ref=e26] [cursor=pointer]:
+        - generic [ref=e27]: "04"
+        - generic [ref=e28]:
+          - generic [ref=e29]: Statistics
+          - strong [ref=e30]: 통계
+    - dialog [ref=e69]:
+      - generic [ref=e70]:
+        - button "닫기" [ref=e71] [cursor=pointer]
+        - strong [ref=e72]: 설문결과
+      - generic [ref=e74]:
+        - heading "설문 리포트" [level=2] [ref=e75]
+        - generic [ref=e76]:
+          - strong [ref=e77]: "???님의 답변"
+          - generic [ref=e78]: 27세 / M
+        - generic [ref=e79]:
+          - generic [ref=e80]:
+            - generic [ref=e81]: 총점
+            - strong [ref=e82]: "0"
+          - article [ref=e83]:
+            - generic [ref=e84]: AI 설문 리포트
+            - paragraph [ref=e85]: OPENAI_API_KEY가 설정되지 않아 자동 분석이 비활성화되었습니다. server/prompts/ragPrompt.js의 프롬프트를 조정한 뒤 API 키를 입력해 주세요.
+        - generic [ref=e86]:
+          - generic [ref=e88]:
+            - heading "현재 느끼는 감정을 입력해주세요." [level=3] [ref=e89]
+            - article [ref=e91]:
+              - generic [ref=e92]: 내 답변
+              - paragraph [ref=e93]: "??? ?? ????"
+          - generic [ref=e95]:
+            - heading "당신이 느끼는 생각을 적어주세요." [level=3] [ref=e96]
+            - article [ref=e98]:
+              - generic [ref=e99]: 내 답변
+              - paragraph [ref=e100]: 응답 없음

@@ -1,0 +1,72 @@
+- main [ref=e6]:
+  - button "BGM OFF" [ref=e31] [cursor=pointer]
+  - generic [ref=e8]:
+    - generic "Step C 메뉴" [ref=e9]:
+      - button "01 Related Articles 관련기사&정보" [ref=e11] [cursor=pointer]:
+        - generic [ref=e12]: "01"
+        - generic [ref=e13]:
+          - generic [ref=e14]: Related Articles
+          - strong [ref=e15]: 관련기사&정보
+      - button "02 Warm Message 따뜻한 한마디" [ref=e16] [cursor=pointer]:
+        - generic [ref=e17]: "02"
+        - generic [ref=e18]:
+          - generic [ref=e19]: Warm Message
+          - strong [ref=e20]: 따뜻한 한마디
+      - button "03 Survey Result 설문결과" [ref=e21] [cursor=pointer]:
+        - generic [ref=e22]: "03"
+        - generic [ref=e23]:
+          - generic [ref=e24]: Survey Result
+          - strong [ref=e25]: 설문결과
+      - button "04 Statistics 통계" [ref=e26] [cursor=pointer]:
+        - generic [ref=e27]: "04"
+        - generic [ref=e28]:
+          - generic [ref=e29]: Statistics
+          - strong [ref=e30]: 통계
+    - dialog [ref=e101]:
+      - generic [ref=e102]:
+        - button "닫기" [ref=e103] [cursor=pointer]
+        - strong [ref=e104]: 통계
+      - generic [ref=e106]:
+        - generic [ref=e111]:
+          - button "돌아가기" [ref=e112] [cursor=pointer]
+          - strong [ref=e113]: 질문별 통계
+        - generic [ref=e109]:
+          - button "01" [ref=e114] [cursor=pointer]:
+            - generic [ref=e115]: "01"
+            - generic [ref=e116]: 통계 보기
+          - button "02" [ref=e117] [cursor=pointer]:
+            - generic [ref=e118]: "02"
+            - generic [ref=e119]: 통계 보기
+          - button "03" [ref=e120] [cursor=pointer]:
+            - generic [ref=e121]: "03"
+            - generic [ref=e122]: 통계 보기
+          - button "04" [ref=e123] [cursor=pointer]:
+            - generic [ref=e124]: "04"
+            - generic [ref=e125]: 통계 보기
+          - button "05" [ref=e126] [cursor=pointer]:
+            - generic [ref=e127]: "05"
+            - generic [ref=e128]: 통계 보기
+          - button "06" [ref=e129] [cursor=pointer]:
+            - generic [ref=e130]: "06"
+            - generic [ref=e131]: 통계 보기
+          - button "07" [ref=e132] [cursor=pointer]:
+            - generic [ref=e133]: "07"
+            - generic [ref=e134]: 통계 보기
+          - button "08" [ref=e135] [cursor=pointer]:
+            - generic [ref=e136]: "08"
+            - generic [ref=e137]: 통계 보기
+          - button "09" [ref=e138] [cursor=pointer]:
+            - generic [ref=e139]: "09"
+            - generic [ref=e140]: 통계 보기
+          - button "10" [ref=e141] [cursor=pointer]:
+            - generic [ref=e142]: "10"
+            - generic [ref=e143]: 통계 보기
+          - button "11" [ref=e144] [cursor=pointer]:
+            - generic [ref=e145]: "11"
+            - generic [ref=e146]: 통계 보기
+          - button "12" [ref=e147] [cursor=pointer]:
+            - generic [ref=e148]: "12"
+            - generic [ref=e149]: 통계 보기
+          - button "13" [ref=e150] [cursor=pointer]:
+            - generic [ref=e151]: "13"
+            - generic [ref=e152]: 통계 보기

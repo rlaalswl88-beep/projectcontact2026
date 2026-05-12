@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ScrollControls, useScroll } from "@react-three/drei";
 import * as THREE from "three";
@@ -18,9 +18,10 @@ const BUBBLE_FAR_Z = -92;
 const BUBBLE_NEAR_Z = 5;
 const POINTER_LOCK_RELEASE_MOTION = 8;
 const RESTORE_EFFECT_DURATION_MS = 3000;
+const SCROLL_CUE_DURATION_MS = 2600;
 const HEADLINE_FLASH_DURATION_MS = 620;
 const DEFAULT_GENERATION = "YB";
-// 포트폴리오 포인트: Step1 쿠키 데이터를 기반으로 B콘텐츠를 사용자 세대별로 개인화합니다.
+// ?ы듃?대━???ъ씤?? Step1 荑좏궎 ?곗씠?곕? 湲곕컲?쇰줈 B肄섑뀗痢좊? ?ъ슜???몃?蹂꾨줈 媛쒖씤?뷀빀?덈떎.
 const USER_INFO_COOKIE_KEY = "isolation_user_info";
 const VALID_GENERATIONS = new Set(["YB", "OB"]);
 const PUBLIC_ASSET_BASE = import.meta.env.BASE_URL;
@@ -97,7 +98,7 @@ function randomRange(seed, min, max) {
   return min + seededRandom(seed) * (max - min);
 }
 
-// 포트폴리오 포인트: DB/쿠키에서 넘어온 generation 값으로 콘텐츠 큐레이션 목록을 동적으로 구성합니다.
+// ?ы듃?대━???ъ씤?? DB/荑좏궎?먯꽌 ?섏뼱??generation 媛믪쑝濡?肄섑뀗痢??먮젅?댁뀡 紐⑸줉???숈쟻?쇰줈 援ъ꽦?⑸땲??
 function buildHeadlineItems(data, generation) {
   const filtered = data.filter((item) => item.generation === generation).slice(0, 10);
 
@@ -205,7 +206,7 @@ function buildBubbleData() {
   });
 }
 
-// 포트폴리오 포인트: 사용자의 스크롤 속도와 포인터 움직임을 3D 파티클 반응으로 연결한 인터랙션입니다.
+// ?ы듃?대━???ъ씤?? ?ъ슜?먯쓽 ?ㅽ겕濡??띾룄? ?ъ씤???吏곸엫??3D ?뚰떚??諛섏쓳?쇰줈 ?곌껐???명꽣?숈뀡?낅땲??
 function Bubbles({ scrollVelocityRef, scrollInputRef, pointerMotionRef }) {
   const meshRef = useRef(null);
   const groupRef = useRef(null);
@@ -335,7 +336,7 @@ function BubbleField({ scrollVelocityRef, scrollInputRef, pointerMotionRef }) {
     </Canvas>
   );
 }
-// 포트폴리오 포인트: 실제 스크롤 없이 가상 진행도, 3D 씬, 페이지 전환 이벤트를 한 흐름으로 제어합니다.
+// ?ы듃?대━???ъ씤?? ?ㅼ젣 ?ㅽ겕濡??놁씠 媛??吏꾪뻾?? 3D ?? ?섏씠吏 ?꾪솚 ?대깽?몃? ???먮쫫?쇰줈 ?쒖뼱?⑸땲??
 function Scrolling() {
   const navigate = useNavigate();
   const shellRef = useRef(null);
@@ -345,6 +346,7 @@ function Scrolling() {
   const rafRef = useRef(0);
   const pointerPointRef = useRef(null);
   const restoreEffectTimeoutRef = useRef(0);
+  const scrollCueTimeoutRef = useRef(0);
   const bgmRef = useRef(null);
   const clickAudioRef = useRef(null);
   const transitionVideoRef = useRef(null);
@@ -360,6 +362,8 @@ function Scrolling() {
   const pendingTouchDeltaRef = useRef(0);
   const lookLockUntilRef = useRef(0);
   const pointerMotionRef = useRef(0);
+  const gyroPermissionRequestedRef = useRef(false);
+  const gyroBaseRef = useRef(null);
   const restoreProgressRef = useRef(0);
   const isRestoringRef = useRef(false);
   const restoreStartRef = useRef(0);
@@ -378,6 +382,7 @@ function Scrolling() {
   const [restoreEffectKey, setRestoreEffectKey] = useState(0);
   const [restoreEffectActive, setRestoreEffectActive] = useState(false);
   const [transitionVideoActive, setTransitionVideoActive] = useState(false);
+  const [scrollCueVisible, setScrollCueVisible] = useState(false);
   const destinationActive = scrollProgress > 0.955;
 
   const depthItems = useMemo(buildDepthItems, []);
@@ -427,6 +432,45 @@ function Scrolling() {
     audio.currentTime = 0;
   }, []);
 
+  const showScrollCue = useCallback(() => {
+    window.clearTimeout(scrollCueTimeoutRef.current);
+    setScrollCueVisible(true);
+    scrollCueTimeoutRef.current = window.setTimeout(() => {
+      setScrollCueVisible(false);
+    }, SCROLL_CUE_DURATION_MS);
+  }, []);
+
+  const hideScrollCue = useCallback(() => {
+    window.clearTimeout(scrollCueTimeoutRef.current);
+    setScrollCueVisible(false);
+  }, []);
+
+  const enableGyro = useCallback(() => {
+    if (gyroPermissionRequestedRef.current || typeof window === "undefined") return;
+    if (!("DeviceOrientationEvent" in window)) return;
+
+    gyroPermissionRequestedRef.current = true;
+    const orientationEvent = window.DeviceOrientationEvent;
+
+    if (typeof orientationEvent?.requestPermission === "function") {
+      orientationEvent
+        .requestPermission()
+        .then((permissionState) => {
+          if (permissionState === "granted") {
+            gyroBaseRef.current = null;
+            setGyroEnabled(true);
+          }
+        })
+        .catch(() => {
+          gyroPermissionRequestedRef.current = false;
+        });
+      return;
+    }
+
+    gyroBaseRef.current = null;
+    setGyroEnabled(true);
+  }, []);
+
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -438,9 +482,17 @@ function Scrolling() {
   }, []);
 
   useEffect(() => {
+    const cueDelay = window.setTimeout(showScrollCue, 350);
+    return () => window.clearTimeout(cueDelay);
+  }, [showScrollCue]);
+
+  useEffect(() => {
     playBgm();
 
-    const handleFirstInteraction = () => playBgm();
+    const handleFirstInteraction = () => {
+      playBgm();
+      enableGyro();
+    };
     window.addEventListener("pointerdown", handleFirstInteraction, { capture: true });
     window.addEventListener("click", handleFirstInteraction, { capture: true });
     window.addEventListener("wheel", handleFirstInteraction, { passive: true });
@@ -455,11 +507,12 @@ function Scrolling() {
       window.removeEventListener("keydown", handleFirstInteraction);
       stopBgm();
     };
-  }, [playBgm, stopBgm]);
+  }, [enableGyro, playBgm, showScrollCue, stopBgm]);
 
   useEffect(() => {
     return () => {
       window.clearTimeout(restoreEffectTimeoutRef.current);
+      window.clearTimeout(scrollCueTimeoutRef.current);
       headlineFlashTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
     };
   }, []);
@@ -519,13 +572,14 @@ function Scrolling() {
     return () => window.removeEventListener("resize", syncViewportGap);
   }, []);
 
-  // 포트폴리오 포인트: wheel/touch/keyboard 입력을 통합 처리해 PC와 모바일에서 동일한 스크롤 경험을 제공합니다.
+  // ?ы듃?대━???ъ씤?? wheel/touch/keyboard ?낅젰???듯빀 泥섎━??PC? 紐⑤컮?쇱뿉???숈씪???ㅽ겕濡?寃쏀뿕???쒓났?⑸땲??
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return undefined;
 
     const handleWheel = (event) => {
       playBgm();
+      hideScrollCue();
       event.preventDefault();
       desiredLookRef.current = { x: 0, y: 0 };
       latestPointerLookRef.current = null;
@@ -552,6 +606,7 @@ function Scrolling() {
 
     const handleTouchMove = (event) => {
       if (touchStartRef.current === null) return;
+      hideScrollCue();
 
       const currentY = event.touches[0]?.clientY ?? touchStartRef.current;
       const delta = touchStartRef.current - currentY;
@@ -576,6 +631,7 @@ function Scrolling() {
         event.key === "PageDown" ||
         event.key === " "
       ) {
+        hideScrollCue();
         event.preventDefault();
         desiredLookRef.current = { x: 0, y: 0 };
         latestPointerLookRef.current = null;
@@ -585,6 +641,7 @@ function Scrolling() {
       }
 
       if (event.key === "ArrowUp" || event.key === "PageUp") {
+        hideScrollCue();
         event.preventDefault();
         desiredLookRef.current = { x: 0, y: 0 };
         latestPointerLookRef.current = null;
@@ -607,9 +664,9 @@ function Scrolling() {
       viewport.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [addProgress, playBgm]);
+  }, [addProgress, hideScrollCue, playBgm]);
 
-  // 포트폴리오 포인트: requestAnimationFrame 기반 보간으로 카메라 이동, 시선, 속도감을 부드럽게 동기화합니다.
+  // ?ы듃?대━???ъ씤?? requestAnimationFrame 湲곕컲 蹂닿컙?쇰줈 移대찓???대룞, ?쒖꽑, ?띾룄媛먯쓣 遺?쒕읇寃??숆린?뷀빀?덈떎.
   useEffect(() => {
     const tick = (now = performance.now()) => {
       pointerMotionRef.current = lerp(pointerMotionRef.current, 0, 0.045);
@@ -769,13 +826,29 @@ function Scrolling() {
     if (!gyroEnabled) return undefined;
 
     const handleOrientation = (event) => {
-      const gamma = event.gamma ?? 0;
-      const beta = event.beta ?? 0;
+      if (event.gamma == null || event.beta == null) return;
+
+      const gamma = event.gamma;
+      const beta = event.beta;
+
+      if (!gyroBaseRef.current) {
+        gyroBaseRef.current = { gamma, beta };
+      }
+
+      const base = gyroBaseRef.current;
+      const gammaDelta = gamma - base.gamma;
+      const betaDelta = beta - base.beta;
 
       desiredLookRef.current = {
-        x: clamp(gamma * 1.15, -DRAG_LIMIT, DRAG_LIMIT),
-        y: clamp((beta - 55) * -0.55, -22, 22),
+        x: clamp(gammaDelta * 2.2, -DRAG_LIMIT, DRAG_LIMIT),
+        y: clamp(betaDelta * -1.45, -34, 34),
       };
+
+      pointerMotionRef.current = clamp(
+        pointerMotionRef.current + (Math.abs(gammaDelta) + Math.abs(betaDelta)) / 260,
+        0,
+        1,
+      );
     };
 
     window.addEventListener("deviceorientation", handleOrientation, true);
@@ -785,6 +858,8 @@ function Scrolling() {
 
   const handlePointerDown = (event) => {
     playBgm();
+    enableGyro();
+    hideScrollCue();
     if (event.target.closest("button")) return;
 
     dragStartRef.current = {
@@ -851,6 +926,7 @@ function Scrolling() {
     }
 
     if (!dragStartRef.current) return;
+    hideScrollCue();
 
     const deltaX = event.clientX - dragStartRef.current.x;
     const deltaY = event.clientY - dragStartRef.current.y;
@@ -875,7 +951,7 @@ function Scrolling() {
     }
   };
 
-  // 포트폴리오 포인트: B콘텐츠 종료 애니메이션이 끝난 뒤 Step3 라우팅까지 자연스럽게 이어지는 전환 로직입니다.
+  // ?ы듃?대━???ъ씤?? B肄섑뀗痢?醫낅즺 ?좊땲硫붿씠?섏씠 ?앸궃 ??Step3 ?쇱슦?낃퉴吏 ?먯뿰?ㅻ읇寃??댁뼱吏???꾪솚 濡쒖쭅?낅땲??
   const handleRestoreScroll = (event) => {
     event?.preventDefault();
     event?.stopPropagation();
@@ -965,7 +1041,7 @@ function Scrolling() {
       >
         <div className="scroll3d__hud" aria-live="polite">
           <div>
-            <p className="scroll3d__kicker">STEP B / 심해</p>
+            <p className="scroll3d__kicker">STEP B / ?ы빐</p>
           </div>
         </div>
 
@@ -976,6 +1052,13 @@ function Scrolling() {
         </div>
 
         <div className="scroll3d__idle-water" aria-hidden />
+
+        {scrollCueVisible && (
+          <div className="scroll3d__scroll-cue" aria-hidden>
+            <strong>스크롤을 내려주세요</strong>
+            <span />
+          </div>
+        )}
 
         <BubbleField
           scrollVelocityRef={scrollVelocityRef}

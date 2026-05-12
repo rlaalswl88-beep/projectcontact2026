@@ -1,4 +1,4 @@
-import {
+﻿import {
   findSurveyParticipantSummaryRows,
   findSurveyStatisticsRows,
 } from '../repositories/statisticsRepository.js';
@@ -58,7 +58,7 @@ function getAnswerType(interactionType) {
   return interactionType === 'choice' ? 'option_id' : 'answer_text_feeling';
 }
 
-// 포트폴리오 포인트: choice/input 답변을 같은 집계 구조로 정규화해 count와 percentage를 계산합니다.
+// ?ы듃?대━???ъ씤?? choice/input ?듬???媛숈? 吏묎퀎 援ъ“濡??뺢퇋?뷀빐 count? percentage瑜?怨꾩궛?⑸땲??
 function aggregateQuestionAnswers(question) {
   const answersByKey = new Map();
 
@@ -88,7 +88,8 @@ function aggregateQuestionAnswers(question) {
     .sort((a, b) => b.count - a.count);
 }
 
-// 포트폴리오 포인트: SQL 집계 row를 그래프 노드, 요약 통계, 질문별 차트 데이터로 변환하는 API 어댑터입니다.
+// ?ы듃?대━???ъ씤?? SQL 吏묎퀎 row瑜?洹몃옒???몃뱶, ?붿빟 ?듦퀎, 吏덈Ц蹂?李⑦듃 ?곗씠?곕줈 蹂?섑븯??API ?대뙌?곗엯?덈떎.
+
 function buildStatisticsPayload(statRows, participantRows) {
   const groupTotals = new Map();
   const sceneTotals = new Map();
@@ -295,6 +296,7 @@ function buildStatisticsPayload(statRows, participantRows) {
 }
 
 export async function getSurveyStatistics() {
+
   const [statRows, participantRows] = await Promise.all([
     findSurveyStatisticsRows(),
     findSurveyParticipantSummaryRows(),
