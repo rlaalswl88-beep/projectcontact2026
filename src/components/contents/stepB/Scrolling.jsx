@@ -14,6 +14,7 @@ const LOOK_RENDER_FOLLOW = 0.04;
 
 const RESTORE_DURATION_MS = 5000;
 const BUBBLE_COUNT = 86;
+const MOBILE_BUBBLE_COUNT = 34;
 const BUBBLE_FAR_Z = -92;
 const BUBBLE_NEAR_Z = 5;
 const POINTER_LOCK_RELEASE_MOTION = 8;
@@ -28,6 +29,12 @@ const PUBLIC_ASSET_BASE = import.meta.env.BASE_URL;
 const STEP2_BGM_SRC = `${PUBLIC_ASSET_BASE}audio/deepSea.mp3`;
 const STEP2_CLICK_SRC = `${PUBLIC_ASSET_BASE}audio/B_click.mp3`;
 const STEP2_TO_STEP3_VIDEO_SRC = `${PUBLIC_ASSET_BASE}video/cutscenes/C_B_VID.mp4`;
+
+function getInitialIsMobile() {
+  if (typeof window === "undefined") return false;
+
+  return window.matchMedia("(max-width: 768px)").matches;
+}
 
 function getCookieValue(key) {
   if (typeof document === "undefined") return null;
@@ -172,8 +179,8 @@ function buildRings() {
   }));
 }
 
-function buildBubbleData() {
-  return Array.from({ length: BUBBLE_COUNT }, (_, index) => {
+function buildBubbleData(count = BUBBLE_COUNT) {
+  return Array.from({ length: count }, (_, index) => {
     const seed = index + 1;
     const layer = index % 10;
     const near = layer > 6;
@@ -207,14 +214,15 @@ function buildBubbleData() {
 }
 
 // ?ы듃?대━???ъ씤?? ?ъ슜?먯쓽 ?ㅽ겕濡??띾룄? ?ъ씤???吏곸엫??3D ?뚰떚??諛섏쓳?쇰줈 ?곌껐???명꽣?숈뀡?낅땲??
-function Bubbles({ scrollVelocityRef, scrollInputRef, pointerMotionRef }) {
+function Bubbles({ scrollVelocityRef, scrollInputRef, pointerMotionRef, isMobile }) {
   const meshRef = useRef(null);
   const groupRef = useRef(null);
   const bubbleEnergyRef = useRef(0);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const scroll = useScroll();
   const { mouse } = useThree();
-  const bubbles = useMemo(buildBubbleData, []);
+  const bubbleCount = isMobile ? MOBILE_BUBBLE_COUNT : BUBBLE_COUNT;
+  const bubbles = useMemo(() => buildBubbleData(bubbleCount), [bubbleCount]);
 
   useFrame((state, delta) => {
     const mesh = meshRef.current;
@@ -297,10 +305,10 @@ function Bubbles({ scrollVelocityRef, scrollInputRef, pointerMotionRef }) {
     <group ref={groupRef}>
       <instancedMesh
         ref={meshRef}
-        args={[undefined, undefined, BUBBLE_COUNT]}
+        args={[undefined, undefined, bubbleCount]}
         frustumCulled={false}
       >
-        <sphereGeometry args={[1, 32, 32]} />
+        <sphereGeometry args={isMobile ? [1, 14, 10] : [1, 32, 32]} />
         <meshPhysicalMaterial
   color="#1a97c9"
   transparent={true}
@@ -317,21 +325,26 @@ function Bubbles({ scrollVelocityRef, scrollInputRef, pointerMotionRef }) {
   );
 }
 
-function BubbleField({ scrollVelocityRef, scrollInputRef, pointerMotionRef }) {
+function BubbleField({ scrollVelocityRef, scrollInputRef, pointerMotionRef, isMobile }) {
   return (
     <Canvas
       className="scroll3d__bubbles"
       camera={{ position: [0, 0, 8], fov: 58, near: 0.1, far: 140 }}
-      dpr={[1, 1.5]}
-      gl={{ alpha: true, antialias: true }}
+      dpr={isMobile ? 1 : [1, 1.5]}
+      gl={{ alpha: true, antialias: !isMobile, powerPreference: "high-performance" }}
     >
       <ambientLight intensity={0.1} />
       <pointLight position={[0, 3.2, 5]} intensity={4.6} color="#ffffff" />
 
-      <Environment preset="night" blur={1} />
+      {!isMobile && <Environment preset="night" blur={1} />}
 
       <ScrollControls pages={6} damping={0.18} style={{ scrollbarWidth: 'none' }}>
-        <Bubbles scrollVelocityRef={scrollVelocityRef} scrollInputRef={scrollInputRef} pointerMotionRef={pointerMotionRef} />
+        <Bubbles
+          scrollVelocityRef={scrollVelocityRef}
+          scrollInputRef={scrollInputRef}
+          pointerMotionRef={pointerMotionRef}
+          isMobile={isMobile}
+        />
       </ScrollControls>
     </Canvas>
   );
@@ -350,6 +363,8 @@ function Scrolling() {
   const bgmRef = useRef(null);
   const clickAudioRef = useRef(null);
   const transitionVideoRef = useRef(null);
+  const isMobileRef = useRef(getInitialIsMobile());
+  const lastGyroUpdateRef = useRef(0);
 
   const targetLookRef = useRef({ x: 0, y: 0 });
   const desiredLookRef = useRef({ x: 0, y: 0 });
@@ -375,6 +390,7 @@ function Scrolling() {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [look, setLook] = useState({ x: 0, y: 0 });
   const [motionFx, setMotionFx] = useState({ drag: 0, restore: 0, idle: 1 });
+  const [isMobile, setIsMobile] = useState(getInitialIsMobile);
   const [gyroEnabled, setGyroEnabled] = useState(false);
   const [generation] = useState(getGenerationFromCookie);
   const [viewportGapX, setViewportGapX] = useState(0);
@@ -384,6 +400,21 @@ function Scrolling() {
   const [transitionVideoActive, setTransitionVideoActive] = useState(false);
   const [scrollCueVisible, setScrollCueVisible] = useState(false);
   const destinationActive = scrollProgress > 0.955;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const mediaQuery = window.matchMedia("(max-width: 768px)");
+    const syncIsMobile = () => {
+      isMobileRef.current = mediaQuery.matches;
+      setIsMobile(mediaQuery.matches);
+    };
+
+    syncIsMobile();
+    mediaQuery.addEventListener?.("change", syncIsMobile);
+
+    return () => mediaQuery.removeEventListener?.("change", syncIsMobile);
+  }, []);
 
   const depthItems = useMemo(buildDepthItems, []);
   const rings = useMemo(buildRings, []);
@@ -709,8 +740,8 @@ function Scrolling() {
         };
 
         if (
-          Math.abs(next.x - current.x) < 0.01 &&
-          Math.abs(next.y - current.y) < 0.01
+          Math.abs(next.x - current.x) < (isMobileRef.current ? 0.03 : 0.01) &&
+          Math.abs(next.y - current.y) < (isMobileRef.current ? 0.03 : 0.01)
         ) {
           return current;
         }
@@ -805,9 +836,9 @@ function Scrolling() {
         };
 
         if (
-          Math.abs(next.drag - current.drag) < 0.004 &&
-          Math.abs(next.restore - current.restore) < 0.004 &&
-          Math.abs(next.idle - current.idle) < 0.004
+          Math.abs(next.drag - current.drag) < (isMobileRef.current ? 0.014 : 0.004) &&
+          Math.abs(next.restore - current.restore) < (isMobileRef.current ? 0.014 : 0.004) &&
+          Math.abs(next.idle - current.idle) < (isMobileRef.current ? 0.014 : 0.004)
         ) {
           return current;
         }
@@ -827,6 +858,9 @@ function Scrolling() {
 
     const handleOrientation = (event) => {
       if (event.gamma == null || event.beta == null) return;
+      const now = performance.now();
+      if (isMobileRef.current && now - lastGyroUpdateRef.current < 50) return;
+      lastGyroUpdateRef.current = now;
 
       const gamma = event.gamma;
       const beta = event.beta;
@@ -1064,6 +1098,7 @@ function Scrolling() {
           scrollVelocityRef={scrollVelocityRef}
           scrollInputRef={scrollInputRef}
           pointerMotionRef={pointerMotionRef}
+          isMobile={isMobile}
         />
 
         {restoreEffectActive && (

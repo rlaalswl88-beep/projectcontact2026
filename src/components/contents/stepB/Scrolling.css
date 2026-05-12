@@ -1045,6 +1045,41 @@ body:has(.scroll3d),
 
   .scroll3d__camera {
     perspective: 560px;
+    filter: none;
+    will-change: transform;
+  }
+
+  .scroll3d__viewport::before {
+    filter: blur(4px);
+    mix-blend-mode: normal;
+  }
+
+  .scroll3d__idle-water {
+    filter: none;
+    opacity: calc(var(--idle-water, 0) * 0.16);
+  }
+
+  .scroll3d__idle-water::before,
+  .scroll3d__idle-water::after {
+    filter: blur(7px);
+  }
+
+  .scroll3d__headline {
+    filter: none;
+    will-change: opacity, transform;
+  }
+
+  .scroll3d__headline strong::before {
+    filter: blur(8px);
+  }
+
+  .scroll3d__restore-effect {
+    filter: blur(4px) brightness(1.08);
+  }
+
+  .scroll3d__abyss-light,
+  .scroll3d__destination {
+    filter: none;
   }
 
   .scroll3d__destination-hit {
