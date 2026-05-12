@@ -22,7 +22,6 @@ const RESTORE_EFFECT_DURATION_MS = 3000;
 const SCROLL_CUE_DURATION_MS = 2600;
 const HEADLINE_FLASH_DURATION_MS = 620;
 const DEFAULT_GENERATION = "YB";
-// ?ы듃?대━???ъ씤?? Step1 荑좏궎 ?곗씠?곕? 湲곕컲?쇰줈 B肄섑뀗痢좊? ?ъ슜???몃?蹂꾨줈 媛쒖씤?뷀빀?덈떎.
 const USER_INFO_COOKIE_KEY = "isolation_user_info";
 const VALID_GENERATIONS = new Set(["YB", "OB"]);
 const PUBLIC_ASSET_BASE = import.meta.env.BASE_URL;
@@ -105,7 +104,6 @@ function randomRange(seed, min, max) {
   return min + seededRandom(seed) * (max - min);
 }
 
-// ?ы듃?대━???ъ씤?? DB/荑좏궎?먯꽌 ?섏뼱??generation 媛믪쑝濡?肄섑뀗痢??먮젅?댁뀡 紐⑸줉???숈쟻?쇰줈 援ъ꽦?⑸땲??
 function buildHeadlineItems(data, generation) {
   const filtered = data.filter((item) => item.generation === generation).slice(0, 10);
 
@@ -213,7 +211,6 @@ function buildBubbleData(count = BUBBLE_COUNT) {
   });
 }
 
-// ?ы듃?대━???ъ씤?? ?ъ슜?먯쓽 ?ㅽ겕濡??띾룄? ?ъ씤???吏곸엫??3D ?뚰떚??諛섏쓳?쇰줈 ?곌껐???명꽣?숈뀡?낅땲??
 function Bubbles({ scrollVelocityRef, scrollInputRef, pointerMotionRef, isMobile }) {
   const meshRef = useRef(null);
   const groupRef = useRef(null);
@@ -349,7 +346,6 @@ function BubbleField({ scrollVelocityRef, scrollInputRef, pointerMotionRef, isMo
     </Canvas>
   );
 }
-// ?ы듃?대━???ъ씤?? ?ㅼ젣 ?ㅽ겕濡??놁씠 媛??吏꾪뻾?? 3D ?? ?섏씠吏 ?꾪솚 ?대깽?몃? ???먮쫫?쇰줈 ?쒖뼱?⑸땲??
 function Scrolling() {
   const navigate = useNavigate();
   const shellRef = useRef(null);
@@ -478,6 +474,7 @@ function Scrolling() {
 
   const enableGyro = useCallback(() => {
     if (gyroPermissionRequestedRef.current || typeof window === "undefined") return;
+    if (!isMobileRef.current) return;
     if (!("DeviceOrientationEvent" in window)) return;
 
     gyroPermissionRequestedRef.current = true;
@@ -603,7 +600,6 @@ function Scrolling() {
     return () => window.removeEventListener("resize", syncViewportGap);
   }, []);
 
-  // ?ы듃?대━???ъ씤?? wheel/touch/keyboard ?낅젰???듯빀 泥섎━??PC? 紐⑤컮?쇱뿉???숈씪???ㅽ겕濡?寃쏀뿕???쒓났?⑸땲??
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return undefined;
@@ -697,7 +693,6 @@ function Scrolling() {
     };
   }, [addProgress, hideScrollCue, playBgm]);
 
-  // ?ы듃?대━???ъ씤?? requestAnimationFrame 湲곕컲 蹂닿컙?쇰줈 移대찓???대룞, ?쒖꽑, ?띾룄媛먯쓣 遺?쒕읇寃??숆린?뷀빀?덈떎.
   useEffect(() => {
     const tick = (now = performance.now()) => {
       pointerMotionRef.current = lerp(pointerMotionRef.current, 0, 0.045);
@@ -908,8 +903,7 @@ function Scrolling() {
   const handlePointerMove = (event) => {
     if (
       !dragStartRef.current &&
-      event.pointerType === "mouse" &&
-      !gyroEnabled
+      event.pointerType === "mouse"
     ) {
       const rect = viewportRef.current?.getBoundingClientRect();
       if (!rect) return;
@@ -979,13 +973,9 @@ function Scrolling() {
     if (dragStartRef.current?.pointerId === event.pointerId) {
       dragStartRef.current = null;
       pointerPointRef.current = null;
-      if (!gyroEnabled) {
-        desiredLookRef.current = { x: 0, y: 0 };
-      }
     }
   };
 
-  // ?ы듃?대━???ъ씤?? B肄섑뀗痢?醫낅즺 ?좊땲硫붿씠?섏씠 ?앸궃 ??Step3 ?쇱슦?낃퉴吏 ?먯뿰?ㅻ읇寃??댁뼱吏???꾪솚 濡쒖쭅?낅땲??
   const handleRestoreScroll = (event) => {
     event?.preventDefault();
     event?.stopPropagation();
@@ -1075,7 +1065,7 @@ function Scrolling() {
       >
         <div className="scroll3d__hud" aria-live="polite">
           <div>
-            <p className="scroll3d__kicker">STEP B / ?ы빐</p>
+            <p className="scroll3d__kicker">STEP B / 심해</p>
           </div>
         </div>
 
