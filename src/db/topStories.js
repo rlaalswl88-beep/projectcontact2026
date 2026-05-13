@@ -1,11 +1,8 @@
 const topStories = [
   {
-    // thumb: 'https://dimg.donga.com/a/180/100/90/3/carriage/ORIGINAL/images/original_main_edit/68fecd5e01e4d2739e10.png',
-    // tit: '나는 말하지 않았다',
-    // txt: '당신의 목소리를 복제하는 데 걸리는 시간, 단 10초.',
     thumb: '693f52e31a10d2739e10.png',
     tit: '헌트: 치매머니 사냥',
-    txt: '나는 내 삶을 사냥 당했다.',
+    txt: '나는 삶을 사냥당했다.',
   },
   {
     thumb: '6902c5db06f0d2739e10.png',

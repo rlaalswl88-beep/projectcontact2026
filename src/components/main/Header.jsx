@@ -14,6 +14,11 @@ function Header() {
                       <h1>
                           <a href="#" onClick={prevent} aria-label="동아일보">
                               <span className="header_brand_text">동아일보</span>
+                              <img
+                                  className="header_brand_img"
+                                  src={`${import.meta.env.BASE_URL}img/top/icon.png`}
+                                  alt=""
+                              />
                           </a>
                       </h1>
                       <section className="gnb_sec">

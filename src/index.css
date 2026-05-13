@@ -105,6 +105,177 @@ body:has(.stepa-player-page) {
   overflow: hidden;
 }
 
+/* PC: 로고는 텍스트만 표시 */
+#header_adaptive .header_brand_img {
+  display: none;
+}
+
+/* PC: 모바일 인트로 배너 숨김 */
+.do-main-home > .top_menu_mobile_intro {
+  display: none;
+}
+
+/* 푸터 min-width 등 — 뷰포트가 좁을 때 가로 스크롤만 방지 (메인 본문은 max-width:1023px 블록·main-home.css) */
+@media (max-width: 1219px) {
+  #footer.adaptive {
+    min-width: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  #footer.adaptive .inner {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+}
+
+/* 태블릿·좁은 창: adaptive_pc 고정폭 풀기 (데스크톱 ≥1024는 src/styles/main-home.css에서 히어로 복원) */
+@media (max-width: 1023px) {
+  #wrapper.adaptive #content.main_content .top_menu,
+  #wrapper.adaptive #content.main_content .main_top,
+  #wrapper.adaptive #content.main_content .main_series,
+  #wrapper.adaptive #content.main_content .main_short,
+  #wrapper.adaptive #content.main_content .main_inside,
+  #wrapper.adaptive #content.main_content .list_type01,
+  #wrapper.adaptive #content.main_content .list_type02,
+  #wrapper.adaptive #content.main_content .list_type03 {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  #wrapper.adaptive #content.main_content .top_menu {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px 12px;
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+
+  #wrapper.adaptive #content.main_content .top_menu .title {
+    float: none;
+    margin-right: 0;
+  }
+
+  #wrapper.adaptive #content.main_content .top_menu .menu_list {
+    float: none;
+    overflow: visible;
+    margin-top: 0;
+  }
+
+  #wrapper.adaptive #content.main_content .top_menu .menu_list li {
+    float: none;
+    display: inline-block;
+  }
+
+  #wrapper.adaptive #content.main_content .main_top .thumb_cont a .cont_info .tit {
+    white-space: normal !important;
+    overflow: visible;
+    word-break: keep-all;
+  }
+
+  #wrapper.adaptive #content.main_content .main_top {
+    margin-top: 16px;
+  }
+
+  #wrapper.adaptive #content.main_content .main_top .thumb_cont {
+    float: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-right: 0 !important;
+  }
+
+  #wrapper.adaptive #content.main_content .main_top .thumb_cont a {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  #wrapper.adaptive #content.main_content .main_top .thumb_cont a .thumb,
+  #wrapper.adaptive #content.main_content .main_top .thumb_cont a .thumb.top_visual_thumb {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 690 / 380;
+    min-height: 200px;
+    overflow: hidden;
+  }
+
+  #wrapper.adaptive #content.main_content .main_top .thumb_cont a .thumb img {
+    height: 100%;
+    min-height: 200px;
+  }
+
+  #wrapper.adaptive #content.main_content .main_top .thumb_cont a:after {
+    width: 100% !important;
+    max-width: 100% !important;
+    left: 0;
+    right: 0;
+    box-sizing: border-box;
+    background-size: cover !important;
+  }
+
+  #wrapper.adaptive #content.main_content .main_top .list_cont {
+    float: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    clear: both;
+  }
+
+  #wrapper.adaptive #content.main_content .series_cont .btm_cont .slide_cont .slide_list li {
+    float: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  #wrapper.adaptive #content.main_content .series_cont .top_cont a .thumb:after {
+    width: 100% !important;
+    max-width: 100% !important;
+    background-size: cover !important;
+  }
+
+  #wrapper.adaptive #content.main_content .short_cont .short_list li .thumb {
+    float: none !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  #wrapper.adaptive #content.main_content .short_cont .short_list li .thumb img {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 500 / 240;
+  }
+
+  #wrapper.adaptive #content.main_content .short_cont .short_list li .cont_info {
+    height: auto !important;
+    min-height: 0;
+  }
+
+  #wrapper.adaptive #content.main_content .inside_cont .inside_list li {
+    float: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  #wrapper.adaptive #content.main_content .inside_cont .inside_list li a {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  #wrapper.adaptive #content.main_content .inside_cont .inside_list li .thumb img {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 384 / 224;
+  }
+}
+
 /* Mobile adaptive overrides for main and header */
 @media (max-width: 768px) {
   body {
@@ -112,9 +283,24 @@ body:has(.stepa-player-page) {
     font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   }
 
+  #header_adaptive.header_type2 .main_head > .inner {
+    padding: 1.0rem 1.6rem;
+  }
+
+  :root{
+  --c_primary_base:none;
+  }
+
+  .main_series {
+    display: none;
+  }
+
+  .main_top .list_cont .thumb_list li {
+    margin-top: -18px;
+  }
+
   #wrapper.adaptive {
     width: 100%;
-    max-width: 390px;
     margin: 0 auto;
     background: #fff;
     min-height: 100vh;
@@ -145,7 +331,7 @@ body:has(.stepa-player-page) {
   }
 
   #header_adaptive .logo_sec {
-    min-height: 56px;
+    min-height: 32px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -159,13 +345,16 @@ body:has(.stepa-player-page) {
   }
 
   #header_adaptive .header_brand_text {
-    display: inline-block;
-    font-size: 33px;
-    line-height: 1;
-    font-weight: 800;
-    color: #111;
-    letter-spacing: -0.06em;
-    white-space: nowrap;
+    display: none !important;
+  }
+
+  #header_adaptive .header_brand_img {
+    display: block;
+    height: 28px;
+    width: auto;
+    max-width: min(200px, 55vw);
+    object-fit: contain;
+    object-position: left center;
   }
 
   #header_adaptive .gnb_sec {
@@ -241,38 +430,24 @@ body:has(.stepa-player-page) {
     margin-top: 0;
   }
 
-  .top_menu {
-    position: relative;
-    padding: 8px 12px;
-    background: #f5f5f5;
+  #wrapper.adaptive #content.main_content .do-main-home > .top_menu {
+    display: none !important;
+  }
+
+  #wrapper.adaptive #content.main_content .do-main-home > .top_menu_mobile_intro {
+    display: block;
+    margin: 0;
+    padding: 0;
+    line-height: 0;
+    background: #fff;
     border-bottom: 1px solid #ececec;
   }
 
-  .top_menu .title {
-    margin: 0;
-    opacity: 0.35;
-  }
-
-  .top_menu .title img {
-    width: 175px;
+  #wrapper.adaptive #content.main_content .do-main-home > .top_menu_mobile_intro img {
+    width: 100%;
     height: auto;
-  }
-
-  .top_menu .menu_list {
-    display: none;
-  }
-
-  .top_menu::after {
-    content: "동아일보의 레거시를 디지털로 담아낸 보도를 선보입니다";
-    position: absolute;
-    right: 12px;
-    top: 8px;
-    width: 165px;
-    font-size: 11px;
-    line-height: 1.3;
-    text-align: center;
-    color: #5f6368;
-    word-break: keep-all;
+    display: block;
+    object-fit: cover;
   }
 
   .main_top {
@@ -285,22 +460,6 @@ body:has(.stepa-player-page) {
     border-bottom: 1px solid #ebebeb;
     padding-bottom: 0;
     margin-bottom: 0;
-  }
-
-  .main_top .thumb_cont .thumb {
-    width: 100% !important;
-    height: 250px !important;
-    border-radius: 0;
-  }
-
-  .main_top .thumb_cont .cont_info,
-  .main_top .thumb_cont .top_visual_info {
-    display: none !important;
-  }
-
-  .main_top .thumb_cont .date,
-  .main_top .thumb_cont .top_visual_date {
-    display: none !important;
   }
 
   .main_top .list_cont {
@@ -336,8 +495,7 @@ body:has(.stepa-player-page) {
     min-width: 0;
   }
 
-  .main_top .list_cont .cont_info .sub_tit,
-  .main_top .list_cont .cont_info .txt {
+  .main_top .list_cont .cont_info .sub_tit {
     display: none;
   }
 
