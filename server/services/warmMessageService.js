@@ -1,4 +1,4 @@
-import { readFile, readdir } from 'node:fs/promises';
+﻿import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -75,7 +75,6 @@ async function getScanner() {
   return scannerPromise;
 }
 
-// 포트폴리오 포인트: 1차 필터에서 Trie 기반 금칙어 검색으로 LLM 호출 전 비용과 응답 지연을 줄입니다.
 async function runListFilter({ nickname, message }) {
   const scanner = await getScanner();
   const nicknameScan = scanner.search(nickname);
@@ -112,7 +111,6 @@ function normalizeLlmResult(value) {
   return { result, target };
 }
 
-// 포트폴리오 포인트: 2차 필터에서 RAG 프롬프트와 GPT JSON 응답을 사용해 문맥 기반 검열을 수행합니다.
 async function runLlmFilter({ nickname, message }) {
   const apiKey = process.env.OPENAI_API_KEY ?? '';
   const model = process.env.OPENAI_WARM_FILTER_MODEL ?? process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
@@ -150,7 +148,6 @@ async function runLlmFilter({ nickname, message }) {
   return normalizeLlmResult(parsed);
 }
 
-// 포트폴리오 포인트: 검열 결과를 세분화해 닉네임 위반은 치환하고 메시지 위반은 숨기는 정책을 DB에 반영합니다.
 async function applyModerationResult({ messageId, result, target }) {
   if (result === 'PASS') {
     await updateCheerMessageStatus({ id: messageId, status: 'PASS' });
@@ -179,7 +176,6 @@ async function moderateMessageInBackground({ messageId, nickname, message }) {
   }
 }
 
-// 입력 검증, 리스트 필터, DB 저장, 비동기 LLM 검열로 이어지는 하이브리드 검열 파이프라인입니다.
 export async function moderateMessage({ userId = null, nickname, message }) {
   const cleanNickname = String(nickname ?? '').trim();
   const cleanMessage = String(message ?? '').trim();
@@ -245,7 +241,6 @@ export async function getMyWarmMessages({ userId, limit } = {}) {
   return findPassedCheerMessagesByUserId({ userId, limit });
 }
 
-// 포트폴리오 포인트: 서버 장애나 재시작 후에도 PENDING 메시지를 재처리해 데이터 정합성을 복구합니다.
 export async function reprocessPendingWarmMessages({ limit = 50 } = {}) {
   const pendingMessages = await findPendingCheerMessages({ limit });
   pendingMessages.forEach((item) => {

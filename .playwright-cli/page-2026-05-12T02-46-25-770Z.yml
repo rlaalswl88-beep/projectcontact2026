@@ -1,0 +1,23 @@
+- main [ref=e6]:
+  - button "BGM OFF" [ref=e31] [cursor=pointer]
+  - generic "Step C 메뉴" [ref=e9]:
+    - button "01 Related Articles 관련기사&정보" [ref=e11] [cursor=pointer]:
+      - generic [ref=e12]: "01"
+      - generic [ref=e13]:
+        - generic [ref=e14]: Related Articles
+        - strong [ref=e15]: 관련기사&정보
+    - button "02 Warm Message 따뜻한 한마디" [ref=e16] [cursor=pointer]:
+      - generic [ref=e17]: "02"
+      - generic [ref=e18]:
+        - generic [ref=e19]: Warm Message
+        - strong [ref=e20]: 따뜻한 한마디
+    - button "03 Survey Result 설문결과" [ref=e21] [cursor=pointer]:
+      - generic [ref=e22]: "03"
+      - generic [ref=e23]:
+        - generic [ref=e24]: Survey Result
+        - strong [ref=e25]: 설문결과
+    - button "04 Statistics 통계" [ref=e26] [cursor=pointer]:
+      - generic [ref=e27]: "04"
+      - generic [ref=e28]:
+        - generic [ref=e29]: Statistics
+        - strong [ref=e30]: 통계

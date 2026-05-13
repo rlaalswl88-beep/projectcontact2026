@@ -82,6 +82,22 @@ function shapeXml(id, shape) {
       </p:sp>`;
 }
 
+function imageXml(id, image) {
+  return `
+      <p:pic>
+        <p:nvPicPr><p:cNvPr id="${id}" name="Picture ${id}"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>
+        <p:blipFill>
+          <a:blip r:embed="${image.relId}"/>
+          <a:stretch><a:fillRect/></a:stretch>
+        </p:blipFill>
+        <p:spPr>
+          <a:xfrm><a:off x="${emu(image.x)}" y="${emu(image.y)}"/><a:ext cx="${emu(image.w)}" cy="${emu(image.h)}"/></a:xfrm>
+          <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+          ${image.line ? `<a:ln w="${Math.round((image.lineWidth ?? 1) * 12700)}"><a:solidFill><a:srgbClr val="${color(image.line)}"/></a:solidFill></a:ln>` : '<a:ln><a:noFill/></a:ln>'}
+        </p:spPr>
+      </p:pic>`;
+}
+
 function arrowXml(id, a) {
   return `
       <p:cxnSp>
@@ -130,6 +146,9 @@ function slideXml(slide, index) {
     }));
   }
   (slide.shapes ?? []).forEach((shape) => items.push(shapeXml(id++, shape)));
+  (slide.images ?? []).forEach((image) => {
+    if (image.relId) items.push(imageXml(id++, image));
+  });
   (slide.arrows ?? []).forEach((arrow) => items.push(arrowXml(id++, arrow)));
 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -156,13 +175,36 @@ function writeBaseParts(dir, slides) {
   ensureDir(path.join(dir, 'ppt', 'slideMasters'));
   ensureDir(path.join(dir, 'ppt', 'slideLayouts', '_rels'));
   ensureDir(path.join(dir, 'ppt', 'slideLayouts'));
+  ensureDir(path.join(dir, 'ppt', 'media'));
   ensureDir(path.join(dir, 'ppt', 'theme'));
+
+  let mediaIndex = 1;
+  slides.forEach((slide, slideIndex) => {
+    (slide.images ?? []).forEach((image, imageIndex) => {
+      const sourcePath = path.isAbsolute(image.path)
+        ? image.path
+        : path.join(root, image.path);
+      if (!fs.existsSync(sourcePath)) {
+        image.relId = null;
+        return;
+      }
+      const ext = path.extname(sourcePath).toLowerCase() || '.png';
+      const mediaName = `image${mediaIndex}${ext}`;
+      fs.copyFileSync(sourcePath, path.join(dir, 'ppt', 'media', mediaName));
+      image.relId = `rId${imageIndex + 2}`;
+      image.target = `../media/${mediaName}`;
+      mediaIndex += 1;
+    });
+  });
 
   const overrides = slides.map((_, i) => `<Override PartName="/ppt/slides/slide${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join('');
   fs.writeFileSync(path.join(dir, '[Content_Types].xml'), `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="png" ContentType="image/png"/>
+  <Default Extension="jpg" ContentType="image/jpeg"/>
+  <Default Extension="jpeg" ContentType="image/jpeg"/>
   <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
   <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
   <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
@@ -221,7 +263,11 @@ function writeBaseParts(dir, slides) {
 
   slides.forEach((slide, i) => {
     fs.writeFileSync(path.join(dir, 'ppt', 'slides', `slide${i + 1}.xml`), slideXml(slide, i + 1));
-    fs.writeFileSync(path.join(dir, 'ppt', 'slides', '_rels', `slide${i + 1}.xml.rels`), `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/></Relationships>`);
+    const imageRels = (slide.images ?? [])
+      .filter((image) => image.relId && image.target)
+      .map((image) => `<Relationship Id="${image.relId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${image.target}"/>`)
+      .join('');
+    fs.writeFileSync(path.join(dir, 'ppt', 'slides', '_rels', `slide${i + 1}.xml.rels`), `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>${imageRels}</Relationships>`);
   });
 }
 
@@ -583,10 +629,336 @@ const threeDSlides = [
   },
 ];
 
+const portfolioMergedSlides = [
+  {
+    bg: '#0B1020', accent: blue, title: 'Portfolio Case Study',
+    shapes: [
+      { x: 0.8, y: 1.35, w: 11.0, h: 1.2, text: '설문 데이터 기반 인터랙티브 콘텐츠 플랫폼', size: 30, bold: true, color: white, fill: null, line: null },
+      makeBullets(0.9, 3.0, 11.3, ['역할: DB 연동, 백엔드 API, RAG 검열, 통계 데이터 가공, 3D 인터랙션 구현', '기술: React, Express, MySQL, OpenAI API, Three.js, React Three Fiber, Drei, Matter.js', '성과: 설문 데이터가 개인화 결과, 전체 통계, 채팅 검열, 3D 체험으로 이어지는 흐름 구축'], { h: 2.7, size: 19 }),
+    ],
+  },
+  {
+    bg: dark, accent: mint, title: '문제 정의와 해결 방향',
+    shapes: [
+      { x: 0.85, y: 1.35, w: 5.5, h: 4.7, text: ['문제', '설문 응답이 저장만 되고 서비스 경험으로 연결되지 않음', '선택형/주관식 응답 구조가 달라 통계화가 어려움', '사용자 채팅 입력은 부적절 표현 노출 위험이 있음', '모바일 화면에서 데이터 시각화의 가독성 확보가 필요'], size: 19, color: white, fill: '#1D2E44', round: true, valign: 'top' },
+      { x: 7.0, y: 1.35, w: 5.5, h: 4.7, text: ['해결', '쿠키 기반 개인화 API 설계', 'DB 조인 + 서비스 계층 가공으로 통계 payload 생성', 'Trie 필터 + GPT RAG 검열로 PASS 메시지만 노출', '3D 인터랙션과 평면 통계를 역할별로 분리'], size: 19, color: dark, fill: mint, round: true, valign: 'top' },
+    ],
+  },
+  {
+    bg: navy, accent: blue, title: '시스템 아키텍처',
+    shapes: [
+      { x: 0.7, y: 1.25, w: 2.2, h: 0.85, text: 'React Step UI', size: 17, bold: true, color: dark, fill: blue, round: true },
+      { x: 3.55, y: 1.25, w: 2.2, h: 0.85, text: 'Express API', size: 17, bold: true, color: dark, fill: mint, round: true },
+      { x: 6.4, y: 1.25, w: 2.2, h: 0.85, text: 'Aiven MySQL', size: 17, bold: true, color: dark, fill: yellow, round: true },
+      { x: 9.25, y: 1.25, w: 2.2, h: 0.85, text: 'OpenAI API', size: 17, bold: true, color: dark, fill: white, round: true },
+      makeBullets(0.9, 3.0, 11.0, ['프론트는 설문, 개인화, 통계, 채팅, 3D 인터랙션 화면 담당', '백엔드는 DB row를 개인 결과/전체 통계/RAG 검열 응답으로 재가공', '외부 AI API 실패를 고려해 상태값과 fail-safe 정책 적용'], { h: 2.6 }),
+    ],
+    arrows: [
+      { x: 2.9, y: 1.67, w: 0.65, h: 0, color: pale },
+      { x: 5.75, y: 1.67, w: 0.65, h: 0, color: pale },
+      { x: 8.6, y: 1.67, w: 0.65, h: 0, color: pale },
+    ],
+  },
+  {
+    bg: dark, accent: yellow, title: 'DB 모델링과 조인 전략',
+    shapes: [
+      makeBullets(0.75, 1.25, 6.0, ['survey_participants: 사용자 단위 결과, 총점, AI 분석 저장', 'user_responses: participant_id와 scene_id 기준 응답 저장', 'scenes_metadata: 질문 라벨과 interaction_type 관리', 'scene_options: 선택형 보기 텍스트 관리'], { h: 4.8 }),
+      makeBullets(7.0, 1.25, 5.4, ['개인 결과는 participantId 기준으로 조인', '전체 통계는 age/gender/scene/answer 기준으로 그룹화', '입력용 장면과 통계 대상 장면을 분리', '주관식은 answer_text_feeling으로 통계 정규화'], { h: 4.8 }),
+    ],
+  },
+  {
+    bg: navy, accent: mint, title: '개인 설문 결과 API',
+    shapes: [
+      { x: 0.85, y: 1.25, w: 3.0, h: 0.85, text: 'Cookie id', size: 18, bold: true, color: dark, fill: blue, round: true },
+      { x: 4.15, y: 1.25, w: 3.0, h: 0.85, text: 'Participant', size: 18, bold: true, color: dark, fill: mint, round: true },
+      { x: 7.45, y: 1.25, w: 3.0, h: 0.85, text: 'Answers', size: 18, bold: true, color: dark, fill: yellow, round: true },
+      makeBullets(0.95, 3.0, 11.0, ['GET /api/isolation/survey-results', '현재 사용자 한 명의 질문/답변만 조회', 'choice는 option_text, input은 answer_text로 응답값 반환', 'total_score와 result_analysis를 상단 리포트 데이터로 함께 제공'], { h: 2.6 }),
+    ],
+    arrows: [
+      { x: 3.85, y: 1.67, w: 0.3, h: 0, color: pale },
+      { x: 7.15, y: 1.67, w: 0.3, h: 0, color: pale },
+    ],
+  },
+  {
+    bg: dark, accent: blue, title: '전체 통계 API',
+    shapes: [
+      makeBullets(0.85, 1.2, 11.2, ['GET /api/isolation/statistics', 'SQL: 연령대/성별/장면/답변 단위 집계', 'choice는 option_id, input은 answer_text_feeling 기준 집계', 'Service: graph.nodes, graph.links, summary.questions 구조로 재가공', 'percentage: 질문 전체 응답 수 대비 선택 수로 계산'], { h: 4.8, size: 20 }),
+    ],
+  },
+  {
+    bg: navy, accent: pink, title: 'RAG 하이브리드 검열',
+    shapes: [
+      { x: 0.8, y: 1.25, w: 3.0, h: 1.2, text: ['1차', 'Trie 리스트 필터'], size: 20, color: dark, fill: yellow, round: true },
+      { x: 5.1, y: 1.25, w: 3.0, h: 1.2, text: ['2차', 'GPT-4o mini RAG'], size: 20, color: dark, fill: mint, round: true },
+      { x: 9.4, y: 1.25, w: 3.0, h: 1.2, text: ['최종', 'DB 상태 반영'], size: 20, color: dark, fill: blue, round: true },
+      makeBullets(0.9, 3.45, 11.1, ['명확한 금칙어는 LLM 비용 없이 즉시 차단', '애매한 문맥은 messageRag.js 프롬프트 기준으로 JSON result/target 판정', '닉네임만 위반하면 대체 닉네임으로 메시지는 살리고, 메시지 위반은 FAIL 처리'], { h: 2.4 }),
+    ],
+    arrows: [
+      { x: 3.8, y: 1.85, w: 1.3, h: 0, color: pale },
+      { x: 8.1, y: 1.85, w: 1.3, h: 0, color: pale },
+    ],
+  },
+  {
+    bg: dark, accent: mint, title: '비동기 검열과 안정성 설계',
+    shapes: [
+      makeBullets(0.9, 1.2, 11.2, ['메시지 등록 API는 LLM 완료를 기다리지 않고 202 Accepted 반환', 'DB에는 먼저 PENDING으로 저장하고 백그라운드에서 PASS/FAIL 업데이트', 'OPENAI API 실패, JSON.parse 실패, 네트워크 오류는 기본 FAIL 처리', '서버 재시작 시 PENDING 메시지를 재처리해 상태 불일치 복구'], { h: 4.8, size: 20 }),
+    ],
+  },
+  {
+    bg: navy, accent: yellow, title: '쿠키 기반 개인화',
+    shapes: [
+      makeBullets(0.85, 1.25, 5.6, ['isolation_user_info 쿠키 사용', 'id: 개인 설문 결과와 내 메시지 조회', 'generation: Step2 B 콘텐츠 분기', 'gender/name: 설문 흐름 정보 유지'], { h: 4.5 }),
+      makeBullets(7.0, 1.25, 5.5, ['내 메시지는 오른쪽 정렬', '타인 메시지는 왼쪽 정렬', '내가 쓴 메시지 보기 모달 제공', '익명 커뮤니티 안에서 개인 작성 내역 확인'], { h: 4.5 }),
+    ],
+  },
+  {
+    bg: '#07111F', accent: blue, title: '3D 구조 1: 라이브러리와 씬 구성',
+    shapes: [
+      makeBullets(0.85, 1.15, 5.8, ['Three.js: WebGL 기반 3D 오브젝트, 카메라, 조명, 머티리얼 구성', 'React Three Fiber: 3D 씬을 React 컴포넌트 구조로 선언', 'Drei: ScrollControls, Environment 등 3D 보조 기능 사용'], { h: 4.9, size: 19 }),
+      makeBullets(7.0, 1.15, 5.4, ['Canvas가 WebGL 렌더링 영역 생성', 'camera position/fov/near/far로 수중 깊이감 구성', 'ambientLight, pointLight, Environment로 어두운 심해 분위기 연출'], { h: 4.9, size: 19 }),
+    ],
+  },
+  {
+    bg: dark, accent: yellow, title: '3D 구조 2: useFrame 애니메이션',
+    shapes: [
+      makeBullets(0.85, 1.25, 5.9, ['useFrame은 매 렌더 프레임마다 실행', 'scroll.delta, wheel input, pointer motion을 합산', 'inputPower → targetEnergy → visibility 계산', '버블의 z/y 위치와 scale을 계속 갱신'], { h: 4.8, size: 19 }),
+      { x: 7.0, y: 1.35, w: 4.8, h: 0.85, text: 'Input', size: 18, bold: true, color: dark, fill: blue, round: true },
+      { x: 7.0, y: 2.55, w: 4.8, h: 0.85, text: 'Energy', size: 18, bold: true, color: dark, fill: mint, round: true },
+      { x: 7.0, y: 3.75, w: 4.8, h: 0.85, text: 'Transform', size: 18, bold: true, color: dark, fill: yellow, round: true },
+      { x: 7.0, y: 4.95, w: 4.8, h: 0.85, text: 'Render Update', size: 18, bold: true, color: dark, fill: white, round: true },
+    ],
+    arrows: [
+      { x: 9.4, y: 2.2, w: 0, h: 0.34, color: pale },
+      { x: 9.4, y: 3.4, w: 0, h: 0.34, color: pale },
+      { x: 9.4, y: 4.6, w: 0, h: 0.34, color: pale },
+    ],
+  },
+  {
+    bg: navy, accent: mint, title: '3D 구조 3: instancedMesh 최적화',
+    shapes: [
+      { x: 0.85, y: 1.25, w: 5.6, h: 4.8, text: ['문제', '버블을 각각 mesh로 만들면 오브젝트 수만큼 draw 비용 증가', 'React 컴포넌트가 많아질수록 모바일 렌더링 부담 증가', '투명 구체는 겹침 처리도 비용이 커질 수 있음'], size: 20, color: white, fill: '#1D2E44', round: true, valign: 'top' },
+      { x: 7.0, y: 1.25, w: 5.6, h: 4.8, text: ['해결', '같은 sphereGeometry와 material 공유', 'THREE.Object3D dummy로 transform 계산', 'mesh.setMatrixAt(index, matrix)로 인스턴스별 위치 갱신', 'instanceMatrix.needsUpdate로 GPU 반영'], size: 20, color: dark, fill: mint, round: true, valign: 'top' },
+    ],
+  },
+  {
+    bg: dark, accent: blue, title: '3D 구조 4: 입력 반응과 통계 전환',
+    shapes: [
+      makeBullets(0.85, 1.15, 5.8, ['Step2: 스크롤 속도, 포인터 움직임, 자이로 값을 3D 반응에 연결', '첫 제스처에서 BGM/자이로 권한 흐름 시작', '상승 이벤트 종료 후 전환 영상 재생 및 Step3 이동'], { h: 4.9, size: 19 }),
+      makeBullets(7.0, 1.15, 5.5, ['초기 통계는 react-force-graph-3d 노드 그래프를 고려', '백엔드는 graph.nodes / graph.links 구조 제공', '최종 UI는 모바일 가독성을 위해 Matter.js 입자 + 원그래프로 전환'], { h: 4.9, size: 19 }),
+    ],
+  },
+  {
+    bg: navy, accent: pink, title: '트러블슈팅',
+    shapes: [
+      makeBullets(0.85, 1.15, 11.3, ['API 실패와 fallback 데이터 혼용 문제: 성공 응답일 때만 DB 데이터 사용', 'SCENE_0 통계 노출 문제: 개인정보 입력 장면 제외', '주관식 통계 분산 문제: answer_text_feeling 도입', 'LLM 검열 중단 문제: PENDING 상태와 재처리 로직 추가', '오디오/자이로 권한 문제: 사용자 제스처 기반 활성화와 안내 UI 추가'], { h: 5.2, size: 18 }),
+    ],
+  },
+  {
+    bg: dark, accent: mint, title: '내가 구현한 핵심 가치',
+    shapes: [
+      makeBullets(0.9, 1.25, 11.2, ['데이터 저장에서 끝나는 설문이 아니라 개인 결과/전체 통계/채팅/3D 경험으로 확장', 'AI API를 단순 호출하지 않고 리스트 필터와 상태 머신을 결합해 운영 가능한 검열 흐름 설계', '모바일 시연 환경에 맞춰 3D 체험과 통계 가독성을 역할별로 분리'], { h: 4.2, size: 21 }),
+    ],
+  },
+  {
+    bg: '#07111F', accent: blue, title: '코드 캡처 위치',
+    shapes: [
+      makeBullets(0.68, 1.0, 5.95, ['DB 연결: server/config/db.js', '개인 결과 SQL: server/repositories/surveyResultRepository.js', '개인 결과 가공: server/services/surveyResultService.js', '전체 통계 SQL: server/repositories/statisticsRepository.js', '통계 payload: server/services/statisticsService.js', 'RAG 프롬프트: server/prompts/messageRag.js'], { h: 5.6, size: 16 }),
+      makeBullets(6.95, 1.0, 5.85, ['하이브리드 검열: server/services/warmMessageService.js', 'Trie 스캐너: server/utils/fastscanner.js', '채팅 쿠키/내 메시지: server/controllers/warmMessageController.js', 'Step2 3D Canvas/useFrame: src/components/contents/stepB/Scrolling.jsx', 'Step2 instancedMesh: src/components/contents/stepB/Scrolling.jsx', 'Step3 Matter/통계 UI: src/components/contents/stepC/Layering.jsx'], { h: 5.6, size: 16 }),
+    ],
+  },
+];
+
+const imgDir = 'output/ppt/img';
+const shot = (name) => path.join(imgDir, name);
+const lightBg = '#F7FBFF';
+const blueText = '#0F3D66';
+const softBlue = '#DDF1FF';
+const lineBlue = '#9BD6FF';
+const ink = '#17324D';
+
+const portfolioVisualSlides = [
+  {
+    bg: lightBg,
+    accent: blue,
+    title: 'Interactive Survey Platform',
+    titleColor: blueText,
+    shapes: [
+      { x: 0.75, y: 1.25, w: 5.6, h: 1.1, text: 'DB · Backend · RAG · 3D Interaction', size: 25, bold: true, color: blueText, fill: null, line: null },
+      { x: 0.82, y: 2.72, w: 4.8, h: 0.8, text: '설문 데이터가 개인 결과, 전체 통계, 채팅 검열, 3D 체험으로 이어지는 풀스택 프로젝트', size: 18, color: ink, fill: null, line: null, valign: 'top' },
+      { x: 0.85, y: 4.2, w: 3.1, h: 0.7, text: 'React + Express + MySQL', size: 16, bold: true, color: blueText, fill: softBlue, line: lineBlue, round: true },
+      { x: 4.15, y: 4.2, w: 2.3, h: 0.7, text: 'OpenAI RAG', size: 16, bold: true, color: blueText, fill: '#EAF7FF', line: lineBlue, round: true },
+      { x: 6.65, y: 4.2, w: 2.8, h: 0.7, text: 'Three.js / Matter.js', size: 16, bold: true, color: blueText, fill: '#EEF9FF', line: lineBlue, round: true },
+    ],
+    images: [
+      { path: shot('screen_03_step3_main_menu.png'), x: 8.75, y: 1.15, w: 2.85, h: 6.15, line: '#C9E8FF' },
+      { path: shot('screen_01_step2_3d_intro.png'), x: 10.35, y: 1.55, w: 2.4, h: 5.2, line: '#C9E8FF' },
+    ],
+  },
+  {
+    bg: lightBg, accent: blue, title: 'System Architecture', titleColor: blueText,
+    shapes: [
+      { x: 0.8, y: 1.25, w: 2.2, h: 0.85, text: 'Step UI', size: 18, bold: true, color: blueText, fill: softBlue, line: lineBlue, round: true },
+      { x: 3.55, y: 1.25, w: 2.2, h: 0.85, text: 'Express API', size: 18, bold: true, color: blueText, fill: '#EAF7FF', line: lineBlue, round: true },
+      { x: 6.3, y: 1.25, w: 2.2, h: 0.85, text: 'Aiven MySQL', size: 18, bold: true, color: blueText, fill: '#F3FBFF', line: lineBlue, round: true },
+      { x: 9.05, y: 1.25, w: 2.2, h: 0.85, text: 'OpenAI API', size: 18, bold: true, color: blueText, fill: '#FFFFFF', line: lineBlue, round: true },
+      makeBullets(0.85, 3.15, 5.6, ['쿠키 기반 사용자 식별', '개인 설문 결과 API', '연령대/성별/문항별 통계 API'], { color: ink, h: 2.4, size: 18 }),
+      makeBullets(6.8, 3.15, 5.6, ['Trie + RAG 메시지 검열', 'Step2 3D 심해 인터랙션', 'Step3 통계/채팅/리포트 모달'], { color: ink, h: 2.4, size: 18 }),
+    ],
+    arrows: [
+      { x: 3.0, y: 1.68, w: 0.55, h: 0, color: '#5DAFEA' },
+      { x: 5.75, y: 1.68, w: 0.55, h: 0, color: '#5DAFEA' },
+      { x: 8.5, y: 1.68, w: 0.55, h: 0, color: '#5DAFEA' },
+    ],
+  },
+  {
+    bg: lightBg, accent: blue, title: 'DB Connection', titleColor: blueText,
+    shapes: [
+      makeBullets(0.8, 1.2, 4.8, ['Aiven MySQL 연결 정보는 .env를 우선 사용', 'mysql2/promise 기반 커넥션 풀 생성', '모든 repository에서 dbPool을 공유'], { color: ink, h: 2.5, size: 18 }),
+      { x: 0.85, y: 4.55, w: 4.7, h: 0.9, text: '캡처 코드: 01_db_connection_pool.png', size: 15, color: blueText, fill: softBlue, line: lineBlue, round: true },
+    ],
+    images: [{ path: shot('01_db_connection_pool.PNG'), x: 6.0, y: 1.1, w: 6.5, h: 5.5, line: '#C7E6FF' }],
+  },
+  {
+    bg: lightBg, accent: blue, title: 'Personal Survey Result API', titleColor: blueText,
+    shapes: [
+      makeBullets(0.75, 1.15, 4.0, ['쿠키 id로 현재 참여자 식별', 'scene/response/option/participant 조인', '총점과 AI 분석 결과를 함께 반환'], { color: ink, h: 2.7, size: 17 }),
+      { x: 0.78, y: 4.3, w: 3.9, h: 0.65, text: '02_personal_survey_join.png', size: 14, color: blueText, fill: softBlue, line: lineBlue, round: true },
+    ],
+    images: [
+      { path: shot('screen_05_step3_personal_result.png'), x: 4.9, y: 1.08, w: 2.55, h: 5.55, line: '#C7E6FF' },
+      { path: shot('02_personal_survey_join.png'), x: 7.75, y: 1.1, w: 4.85, h: 5.5, line: '#C7E6FF' },
+    ],
+  },
+  {
+    bg: lightBg, accent: blue, title: 'Statistics SQL Grouping', titleColor: blueText,
+    shapes: [
+      makeBullets(0.75, 1.1, 4.4, ['age를 10단위 연령대로 그룹화', 'gender와 scene 기준 집계', 'choice는 option_id, input은 answer_text_feeling 사용'], { color: ink, h: 3.2, size: 17 }),
+    ],
+    images: [{ path: shot('03_statistics_sql_grouping.png'), x: 5.4, y: 0.95, w: 7.2, h: 5.95, line: '#C7E6FF' }],
+  },
+  {
+    bg: lightBg, accent: blue, title: 'Statistics Payload', titleColor: blueText,
+    shapes: [
+      makeBullets(0.75, 1.1, 4.5, ['질문별 답변 count 합산', 'percentage 계산', '3D 확장용 nodes/links와 원그래프용 summary 동시 반환'], { color: ink, h: 3.0, size: 17 }),
+    ],
+    images: [
+      { path: shot('04_statistics_percentage_aggregation.png'), x: 5.35, y: 1.0, w: 3.55, h: 2.75, line: '#C7E6FF' },
+      { path: shot('05_statistics_payload_graph_summary.png'), x: 9.05, y: 1.0, w: 3.45, h: 2.75, line: '#C7E6FF' },
+      { path: shot('screen_08_step3_stats_pie_detail.png'), x: 6.75, y: 4.0, w: 2.55, h: 2.35, line: '#C7E6FF' },
+    ],
+  },
+  {
+    bg: lightBg, accent: blue, title: 'Warm Chat Moderation', titleColor: blueText,
+    shapes: [
+      { x: 0.8, y: 1.2, w: 2.5, h: 0.75, text: '입력 검증', size: 16, bold: true, color: blueText, fill: softBlue, line: lineBlue, round: true },
+      { x: 3.8, y: 1.2, w: 2.5, h: 0.75, text: 'Trie 필터', size: 16, bold: true, color: blueText, fill: '#EAF7FF', line: lineBlue, round: true },
+      { x: 6.8, y: 1.2, w: 2.5, h: 0.75, text: 'LLM RAG', size: 16, bold: true, color: blueText, fill: '#F3FBFF', line: lineBlue, round: true },
+      { x: 9.8, y: 1.2, w: 2.5, h: 0.75, text: 'DB 상태', size: 16, bold: true, color: blueText, fill: '#FFFFFF', line: lineBlue, round: true },
+      makeBullets(0.85, 3.0, 5.1, ['명확한 금칙어는 LLM 호출 없이 즉시 차단', '문맥 판단은 GPT JSON 응답으로 처리', 'PASS 메시지만 화면에 노출'], { color: ink, h: 2.3, size: 18 }),
+    ],
+    images: [{ path: shot('screen_04_step3_warm_chat.png'), x: 7.55, y: 2.55, w: 2.65, h: 4.15, line: '#C7E6FF' }],
+    arrows: [
+      { x: 3.3, y: 1.58, w: 0.5, h: 0, color: '#5DAFEA' },
+      { x: 6.3, y: 1.58, w: 0.5, h: 0, color: '#5DAFEA' },
+      { x: 9.3, y: 1.58, w: 0.5, h: 0, color: '#5DAFEA' },
+    ],
+  },
+  {
+    bg: lightBg, accent: blue, title: 'RAG Filter Code', titleColor: blueText,
+    shapes: [
+      makeBullets(0.75, 1.05, 3.5, ['1차 Trie 필터', '2차 GPT-4o mini RAG', 'JSON.parse 결과를 DB 정책과 연결'], { color: ink, h: 2.8, size: 17 }),
+    ],
+    images: [
+      { path: shot('06_warm_chat_trie_filter.png'), x: 4.4, y: 0.95, w: 3.8, h: 2.75, line: '#C7E6FF' },
+      { path: shot('07_warm_chat_llm_rag_filter.png'), x: 8.45, y: 0.95, w: 3.95, h: 2.75, line: '#C7E6FF' },
+      { path: shot('10_rag_prompt_policy.png'), x: 4.4, y: 3.95, w: 8.0, h: 2.45, line: '#C7E6FF' },
+    ],
+  },
+  {
+    bg: lightBg, accent: blue, title: 'Async Pipeline & Recovery', titleColor: blueText,
+    shapes: [
+      makeBullets(0.75, 1.05, 3.7, ['메시지는 먼저 PENDING 저장', '검열은 백그라운드 처리', '서버 재시작 시 PENDING 재처리'], { color: ink, h: 3.1, size: 17 }),
+    ],
+    images: [
+      { path: shot('08_warm_chat_async_moderation_pipeline.png'), x: 4.5, y: 1.0, w: 4.3, h: 5.35, line: '#C7E6FF' },
+      { path: shot('09_warm_chat_pending_recovery.png'), x: 9.05, y: 1.0, w: 3.3, h: 2.45, line: '#C7E6FF' },
+      { path: shot('12_fastscanner_trie_search.png'), x: 9.05, y: 3.75, w: 3.3, h: 2.6, line: '#C7E6FF' },
+    ],
+  },
+  {
+    bg: lightBg, accent: blue, title: 'Step2 3D Scene', titleColor: blueText,
+    shapes: [
+      makeBullets(0.75, 1.1, 4.4, ['React Three Fiber Canvas', 'Drei ScrollControls / Environment', '스크롤과 포인터 입력에 반응하는 심해 입자'], { color: ink, h: 3.0, size: 18 }),
+    ],
+    images: [
+      { path: shot('screen_01_step2_3d_intro.png'), x: 5.45, y: 0.95, w: 2.8, h: 6.05, line: '#C7E6FF' },
+      { path: shot('screen_02_step2_3d_scroll.png'), x: 8.7, y: 0.95, w: 2.8, h: 6.05, line: '#C7E6FF' },
+    ],
+  },
+  {
+    bg: lightBg, accent: blue, title: '3D Animation Code', titleColor: blueText,
+    shapes: [
+      makeBullets(0.75, 1.1, 3.4, ['useFrame으로 매 프레임 갱신', 'instancedMesh로 다수 구체 최적화', 'Canvas 씬에서 카메라/조명/환경 구성'], { color: ink, h: 3.4, size: 17 }),
+    ],
+    images: [
+      { path: shot('13_step2_3d_bubbles_useframe.png'), x: 4.3, y: 0.95, w: 4.0, h: 5.9, line: '#C7E6FF' },
+      { path: shot('14_step2_3d_canvas_scene.png'), x: 8.55, y: 0.95, w: 3.9, h: 3.0, line: '#C7E6FF' },
+      { path: shot('15_step2_mobile_gyro_permission.png'), x: 8.55, y: 4.15, w: 3.9, h: 2.7, line: '#C7E6FF' },
+    ],
+  },
+  {
+    bg: lightBg, accent: blue, title: 'Step3 Statistics UI', titleColor: blueText,
+    shapes: [
+      makeBullets(0.75, 1.1, 3.8, ['참여자 1명 = 입자 1개', 'Matter.js 물리 엔진으로 낙하/누적 표현', '문항별 원그래프로 상세 비율 제공'], { color: ink, h: 3.1, size: 17 }),
+    ],
+    images: [
+      { path: shot('screen_06_step3_stats_particles.png'), x: 4.7, y: 0.95, w: 2.55, h: 5.55, line: '#C7E6FF' },
+      { path: shot('screen_07_step3_stats_question_grid.png'), x: 7.55, y: 0.95, w: 2.55, h: 5.55, line: '#C7E6FF' },
+      { path: shot('17_step3_matter_participant_particles.png'), x: 10.35, y: 1.35, w: 2.4, h: 4.55, line: '#C7E6FF' },
+    ],
+  },
+  {
+    bg: lightBg, accent: blue, title: 'Cookie Personalization', titleColor: blueText,
+    shapes: [
+      makeBullets(0.75, 1.1, 4.2, ['isolation_user_info 쿠키 사용', 'id로 개인 결과와 내 메시지 조회', 'generation으로 Step2 콘텐츠 분기'], { color: ink, h: 3.0, size: 18 }),
+    ],
+    images: [
+      { path: shot('16_step3_cookie_chat_personalization.png'), x: 5.0, y: 1.05, w: 4.05, h: 5.35, line: '#C7E6FF' },
+      { path: shot('screen_03_step3_main_menu.png'), x: 9.35, y: 1.05, w: 2.55, h: 5.5, line: '#C7E6FF' },
+    ],
+  },
+  {
+    bg: lightBg, accent: blue, title: 'Troubleshooting', titleColor: blueText,
+    shapes: [
+      makeBullets(0.9, 1.15, 11.2, ['통계 fallback 혼용 문제: API 성공 시에만 DB 데이터 사용', 'SCENE_0 개인정보 문항 노출 문제: 통계/결과 화면에서 제외', '주관식 통계 분산 문제: answer_text_feeling 도입', 'LLM 실패/파싱 오류 문제: FAIL 기본값과 PENDING 복구', '모바일 자이로/오디오 정책 문제: 사용자 제스처와 안내 UI로 흐름 재설계'], { color: ink, h: 4.8, size: 19 }),
+    ],
+  },
+  {
+    bg: lightBg, accent: blue, title: 'Troubleshooting: 로그인 없는 개인 식별', titleColor: blueText,
+    shapes: [
+      { x: 0.8, y: 1.15, w: 2.5, h: 0.65, text: 'Situation', size: 16, bold: true, color: blueText, fill: softBlue, line: lineBlue, round: true },
+      { x: 0.8, y: 1.95, w: 5.7, h: 1.15, text: '고립 척도 검사 결과를 재방문 시 다시 보여주려면 사용자 식별 Key가 필요했지만, 오픈형 콘텐츠라 로그인 체계가 없었습니다.', size: 15, color: ink, fill: '#FFFFFF', line: '#C7E6FF', round: true, valign: 'top' },
+      { x: 6.85, y: 1.15, w: 2.5, h: 0.65, text: 'Task', size: 16, bold: true, color: blueText, fill: softBlue, line: lineBlue, round: true },
+      { x: 6.85, y: 1.95, w: 5.7, h: 1.15, text: '전화번호/이메일 수집은 접근성을 해치고 심리적 거부감을 만들 수 있어, 최소 정보로 식별 가능한 구조가 필요했습니다.', size: 15, color: ink, fill: '#FFFFFF', line: '#C7E6FF', round: true, valign: 'top' },
+      { x: 0.8, y: 3.55, w: 2.5, h: 0.65, text: 'Action', size: 16, bold: true, color: blueText, fill: softBlue, line: lineBlue, round: true },
+      { x: 0.8, y: 4.35, w: 5.7, h: 1.45, text: '이메일/전화번호 수집을 철회하고 이름, 나이, 성별 조합을 복합 키로 활용했습니다. 완벽한 유일성보다 콘텐츠의 가벼운 UX와 데이터 매칭 균형을 우선했습니다.', size: 15, color: ink, fill: '#FFFFFF', line: '#C7E6FF', round: true, valign: 'top' },
+      { x: 6.85, y: 3.55, w: 2.5, h: 0.65, text: 'Result', size: 16, bold: true, color: blueText, fill: softBlue, line: lineBlue, round: true },
+      { x: 6.85, y: 4.35, w: 5.7, h: 1.45, text: '개인정보 부담을 줄여 참여 허들을 낮추고, 복잡한 가입 없이도 재방문 결과 조회와 공유가 가능한 최소 개인화 흐름을 확보했습니다.', size: 15, color: ink, fill: '#FFFFFF', line: '#C7E6FF', round: true, valign: 'top' },
+    ],
+  },
+  {
+    bg: lightBg, accent: blue, title: 'Code Capture Index', titleColor: blueText,
+    shapes: [
+      makeBullets(0.65, 1.0, 6.0, ['DB: 01_db_connection_pool.png', '개인 결과: 02_personal_survey_join.png', '통계 SQL: 03_statistics_sql_grouping.png', '통계 계산: 04, 05', 'RAG/검열: 06, 07, 08, 09, 10', 'Trie: 11, 12'], { color: ink, h: 5.5, size: 16 }),
+      makeBullets(6.9, 1.0, 5.8, ['3D: 13_step2_3d_bubbles_useframe.png', '3D Canvas: 14_step2_3d_canvas_scene.png', '자이로: 15_step2_mobile_gyro_permission.png', '채팅 개인화: 16_step3_cookie_chat_personalization.png', 'Matter 통계: 17_step3_matter_participant_particles.png', '화면 캡처: screen_01 ~ screen_08'], { color: ink, h: 5.5, size: 16 }),
+    ],
+  },
+];
+
 rm(tmpRoot);
 const made = [
   makeDeck(presentationSlides, 'isolation_presentation_deck.pptx'),
-  makeDeck(portfolioSlides, 'isolation_portfolio_deck.pptx'),
+  makeDeck(portfolioVisualSlides, 'isolation_portfolio_deck.pptx'),
   makeDeck(threeDSlides, 'isolation_3d_frontend_deck.pptx'),
 ];
 rm(tmpRoot);

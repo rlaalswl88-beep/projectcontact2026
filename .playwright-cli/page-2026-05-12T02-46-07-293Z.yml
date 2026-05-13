@@ -1,0 +1,59 @@
+- main [ref=e6]:
+  - button "BGM OFF" [ref=e31] [cursor=pointer]
+  - generic [ref=e8]:
+    - generic "Step C 메뉴" [ref=e9]:
+      - button "01 Related Articles 관련기사&정보" [ref=e11] [cursor=pointer]:
+        - generic [ref=e12]: "01"
+        - generic [ref=e13]:
+          - generic [ref=e14]: Related Articles
+          - strong [ref=e15]: 관련기사&정보
+      - button "02 Warm Message 따뜻한 한마디" [active] [ref=e16] [cursor=pointer]:
+        - generic [ref=e17]: "02"
+        - generic [ref=e18]:
+          - generic [ref=e19]: Warm Message
+          - strong [ref=e20]: 따뜻한 한마디
+      - button "03 Survey Result 설문결과" [ref=e21] [cursor=pointer]:
+        - generic [ref=e22]: "03"
+        - generic [ref=e23]:
+          - generic [ref=e24]: Survey Result
+          - strong [ref=e25]: 설문결과
+      - button "04 Statistics 통계" [ref=e26] [cursor=pointer]:
+        - generic [ref=e27]: "04"
+        - generic [ref=e28]:
+          - generic [ref=e29]: Statistics
+          - strong [ref=e30]: 통계
+    - dialog [ref=e32]:
+      - generic [ref=e33]:
+        - button "닫기" [ref=e34] [cursor=pointer]
+        - strong [ref=e35]: 따뜻한 한마디
+      - generic [ref=e37]:
+        - button "내가 쓴 메시지 보기" [ref=e39] [cursor=pointer]
+        - generic [ref=e40]:
+          - generic [ref=e41]:
+            - strong [ref=e42]: 동아
+            - generic [ref=e43]: 힘내세요
+          - generic [ref=e44]:
+            - strong [ref=e45]: 김무진
+            - generic [ref=e46]: 오늘도 화이팅
+          - generic [ref=e47]:
+            - strong [ref=e48]: 김신
+            - generic [ref=e49]: 좋아좋아요
+          - generic [ref=e50]:
+            - strong [ref=e51]: 홍길동
+            - generic [ref=e52]: 고마워요
+          - generic [ref=e53]:
+            - strong [ref=e54]: 홍길동
+            - generic [ref=e55]: 감사합니다
+          - generic [ref=e56]:
+            - strong [ref=e57]: 김수창
+            - generic [ref=e58]: 사랑한다 김민지~!!!!!!!
+          - generic [ref=e59]:
+            - strong [ref=e60]: 김치
+            - generic [ref=e61]: 방밖으로 나와봐요 여러분^^
+          - generic [ref=e62]:
+            - strong [ref=e63]: 아라리
+            - generic [ref=e64]: 반가워요!
+        - generic [ref=e65]:
+          - textbox "닉네임" [ref=e66]
+          - textbox "따뜻한 한마디를 남겨주세요" [ref=e67]
+          - button "등록" [ref=e68] [cursor=pointer]

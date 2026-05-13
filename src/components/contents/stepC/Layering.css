@@ -506,11 +506,12 @@ a.layering-info-card--link:focus-visible {
 
 .layering-chat {
   position: relative;
-  min-height: 100%;
-  padding: 24px 18px;
+  height: 100%;
+  min-height: 0;
+  padding: 14px 14px calc(12px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   background: linear-gradient(180deg, #101820, #0e141b);
 }
 
@@ -521,10 +522,10 @@ a.layering-info-card--link:focus-visible {
 }
 
 .layering-chat__tools button {
-  min-height: 36px;
+  min-height: 32px;
   border: 1px solid rgba(145, 232, 255, 0.22);
   border-radius: 999px;
-  padding: 0 13px;
+  padding: 0 12px;
   background: rgba(81, 217, 255, 0.12);
   color: #d8f7ff;
   font-size: 12px;
@@ -537,15 +538,15 @@ a.layering-info-card--link:focus-visible {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .layering-chat__bubble {
   max-width: 82%;
   border-radius: 8px;
-  padding: 13px 14px;
-  font-size: 14px;
-  line-height: 1.5;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.42;
 }
 
 .layering-chat__bubble strong,
@@ -554,9 +555,9 @@ a.layering-info-card--link:focus-visible {
 }
 
 .layering-chat__bubble strong {
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   color: #91e8ff;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .layering-chat__bubble--left {
@@ -578,7 +579,7 @@ a.layering-info-card--link:focus-visible {
 .layering-chat__form {
   flex: 0 0 auto;
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .layering-chat__form input,
@@ -586,14 +587,16 @@ a.layering-info-card--link:focus-visible {
   width: 100%;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  padding: 11px 12px;
+  padding: 9px 10px;
   background: rgba(255, 255, 255, 0.08);
   color: #ffffff;
   font: inherit;
+  font-size: 13px;
 }
 
 .layering-chat__form textarea {
-  min-height: 82px;
+  height: 56px;
+  min-height: 56px;
   resize: none;
 }
 
@@ -603,7 +606,7 @@ a.layering-info-card--link:focus-visible {
 }
 
 .layering-chat__form button {
-  min-height: 44px;
+  min-height: 38px;
   border: 0;
   border-radius: 999px;
   background: #51d9ff;
