@@ -70,12 +70,21 @@ export async function createWarmMessage(req, res) {
 
 export async function listWarmMessages(req, res) {
   try {
-    const messages = await getWarmMessages({ limit: getLimit(req) });
+    const limit = getLimit(req, 20);
+    const beforeRaw = req.query.beforeId;
+    const parsedBefore =
+      beforeRaw !== undefined && beforeRaw !== '' && String(beforeRaw).toLowerCase() !== 'null'
+        ? Number.parseInt(String(beforeRaw), 10)
+        : null;
+    const beforeId = Number.isFinite(parsedBefore) ? parsedBefore : null;
+
+    const { messages, hasMore } = await getWarmMessages({ limit, beforeId });
 
     res.json({
       ok: true,
       currentUserId: getIsolationUserId(req),
       messages,
+      hasMore,
     });
   } catch (error) {
     res.status(500).json({

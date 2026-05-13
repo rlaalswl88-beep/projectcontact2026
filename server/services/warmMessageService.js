@@ -6,7 +6,7 @@ import {
   WARM_CHAT_FILTER_SYSTEM_PROMPT,
 } from '../prompts/messageRag.js';
 import {
-  findPassedCheerMessages,
+  findPassedCheerMessagesPage,
   findPassedCheerMessagesByUserId,
   findPendingCheerMessages,
   insertCheerMessage,
@@ -232,8 +232,8 @@ export async function moderateMessage({ userId = null, nickname, message }) {
   };
 }
 
-export async function getWarmMessages({ limit } = {}) {
-  return findPassedCheerMessages({ limit });
+export async function getWarmMessages({ limit = 20, beforeId = null } = {}) {
+  return findPassedCheerMessagesPage({ limit, beforeId });
 }
 
 export async function getMyWarmMessages({ userId, limit } = {}) {

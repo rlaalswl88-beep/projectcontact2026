@@ -621,14 +621,16 @@ export default function Branch() {
                     />
                   </div>
                 )}
-                <button
-                  type="button"
-                  className="btn-save stepa-player__submit-btn"
-                  onClick={saveInputAndMove}
-                  disabled={checkingExisting}
-                >
-                  {checkingExisting ? '확인 중...' : '다음'}
-                </button>
+                {!(scene.sceneCode === 'SCENE_0' && existingParticipant) && (
+                  <button
+                    type="button"
+                    className="btn-save stepa-player__submit-btn"
+                    onClick={saveInputAndMove}
+                    disabled={checkingExisting}
+                  >
+                    {checkingExisting ? '확인 중...' : '다음'}
+                  </button>
+                )}
                 {scene.sceneCode === 'SCENE_0' && existingParticipant && (
                   <div className="stepa-player__existing-actions">
                     <button

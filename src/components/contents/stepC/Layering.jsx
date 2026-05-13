@@ -343,6 +343,36 @@ function parseIsolationUserCookie() {
   }
 }
 
+/** mysql2 등에서 userId / userid / user_id 로 올 수 있음 */
+function normalizeWarmMessageRow(row) {
+  if (!row || typeof row !== 'object') return row;
+  const userId = row.userId ?? row.userid ?? row.user_id ?? null;
+  return { ...row, userId };
+}
+
+function sortWarmMessagesByIdAsc(rows) {
+  return [...(rows ?? [])]
+    .map(normalizeWarmMessageRow)
+    .sort((a, b) => Number(a.id) - Number(b.id));
+}
+
+function isWarmMessageMine(item, viewerIdStr, draftNickname) {
+  const nick = (draftNickname || '').trim();
+  if (viewerIdStr && item.userId != null && item.userId !== '' && String(item.userId) === String(viewerIdStr)) {
+    return true;
+  }
+  if ((item.userId == null || item.userId === '') && nick && (item.nickname || '').trim() === nick) {
+    return true;
+  }
+  return false;
+}
+
+const WARM_PAGE_SIZE = 20;
+
+function normalizeWarmMessages(rows) {
+  return [...(rows ?? [])].map(normalizeWarmMessageRow);
+}
+
 // 포트폴리오 포인트: 쿠키 userId를 기준으로 채팅 등록, 전체 조회, 내 메시지 분리 조회를 처리합니다.
 function ChatPanel() {
   const [nickname, setNickname] = useState('');
@@ -351,17 +381,116 @@ function ChatPanel() {
   const [myMessages, setMyMessages] = useState([]);
   const [isMineModalOpen, setIsMineModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [viewerUserId, setViewerUserId] = useState(null);
+  const [hasMoreOlder, setHasMoreOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const chatListRef = useRef(null);
+  const messagesRef = useRef([]);
+  const hasMoreRef = useRef(false);
+  const loadingOlderRef = useRef(false);
   const currentUser = parseIsolationUserCookie();
   const currentUserId = currentUser?.id ?? null;
 
-  async function loadMessages() {
-    const response = await fetch('/api/warm/messages', {
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    hasMoreRef.current = hasMoreOlder;
+  }, [hasMoreOlder]);
+
+  const scrollChatToBottom = useCallback(() => {
+    const el = chatListRef.current;
+    if (!el) return;
+    window.requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+  }, []);
+
+  const loadInitialMessages = useCallback(async () => {
+    const response = await fetch(`/api/warm/messages?limit=${WARM_PAGE_SIZE}`, {
       credentials: 'include',
     });
     if (!response.ok) return;
     const data = await response.json();
-    setMessages(data.messages ?? []);
-  }
+    const fromApi = data.currentUserId;
+    setViewerUserId(fromApi != null && fromApi !== '' ? String(fromApi) : null);
+    setMessages(normalizeWarmMessages(data.messages));
+    setHasMoreOlder(data.hasMore === true);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(scrollChatToBottom);
+    });
+  }, [scrollChatToBottom]);
+
+  const loadOlderMessages = useCallback(async () => {
+    if (loadingOlderRef.current || !hasMoreRef.current) return;
+    const list = messagesRef.current;
+    if (!list.length) return;
+    const minId = Math.min(...list.map((m) => Number(m.id)));
+    if (!Number.isFinite(minId)) return;
+
+    loadingOlderRef.current = true;
+    setLoadingOlder(true);
+    const el = chatListRef.current;
+    const prevScrollHeight = el?.scrollHeight ?? 0;
+    const prevScrollTop = el?.scrollTop ?? 0;
+
+    try {
+      const qs = new URLSearchParams({
+        limit: String(WARM_PAGE_SIZE),
+        beforeId: String(minId),
+      });
+      const response = await fetch(`/api/warm/messages?${qs}`, { credentials: 'include' });
+      if (!response.ok) return;
+      const data = await response.json();
+      const chunk = normalizeWarmMessages(data.messages);
+      if (!chunk.length) {
+        setHasMoreOlder(false);
+        return;
+      }
+      setMessages((prev) => {
+        const ids = new Set(prev.map((p) => p.id));
+        return [...chunk.filter((c) => !ids.has(c.id)), ...prev];
+      });
+      setHasMoreOlder(data.hasMore === true);
+
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          const box = chatListRef.current;
+          if (box) {
+            box.scrollTop = box.scrollHeight - prevScrollHeight + prevScrollTop;
+          }
+        });
+      });
+    } finally {
+      loadingOlderRef.current = false;
+      setLoadingOlder(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadInitialMessages();
+  }, [loadInitialMessages]);
+
+  useEffect(() => {
+    const el = chatListRef.current;
+    if (!el) return undefined;
+    let throttleId = null;
+    const onScroll = () => {
+      if (throttleId != null) return;
+      throttleId = window.setTimeout(() => {
+        throttleId = null;
+        if (el.scrollTop < 90 && hasMoreRef.current && !loadingOlderRef.current) {
+          void loadOlderMessages();
+        }
+      }, 100);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      if (throttleId != null) window.clearTimeout(throttleId);
+    };
+  }, [loadOlderMessages]);
 
   async function loadMyMessages() {
     const response = await fetch('/api/warm/messages/mine', {
@@ -372,12 +501,8 @@ function ChatPanel() {
       return;
     }
     const data = await response.json();
-    setMyMessages(data.messages ?? []);
+    setMyMessages(sortWarmMessagesByIdAsc(data.messages));
   }
-
-  useEffect(() => {
-    loadMessages();
-  }, []);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -408,7 +533,7 @@ function ChatPanel() {
 
       setMessage('');
       window.setTimeout(() => {
-        loadMessages();
+        void loadInitialMessages();
         if (isMineModalOpen) loadMyMessages();
       }, 1200);
     } catch {
@@ -425,19 +550,30 @@ function ChatPanel() {
           type="button"
           onClick={() => {
             setIsMineModalOpen(true);
-            loadMessages();
+            void loadInitialMessages();
             loadMyMessages();
           }}
         >
           내가 쓴 메시지 보기
         </button>
       </div>
-      <div className="layering-chat__list">
+      <div className="layering-chat__list" ref={chatListRef}>
+        {loadingOlder && (
+          <div className="layering-chat__older-loading" role="status">
+            이전 메시지 불러오는 중...
+          </div>
+        )}
         {messages.length === 0 && (
           <div className="layering-chat__bubble layering-chat__bubble--left">오늘 여기까지 온 것만으로도 이미 충분히 중요한 응답이에요.</div>
         )}
         {messages.map((item) => {
-          const isMine = currentUserId && String(item.userId) === String(currentUserId);
+          const viewer =
+            viewerUserId != null && viewerUserId !== ''
+              ? viewerUserId
+              : currentUserId != null && currentUserId !== ''
+                ? String(currentUserId)
+                : '';
+          const isMine = isWarmMessageMine(item, viewer, nickname);
           return (
             <div
               key={item.id}
@@ -489,7 +625,7 @@ function ChatPanel() {
                   type="button"
                   onClick={() => {
                     setIsMineModalOpen(false);
-                    loadMessages();
+                    void loadInitialMessages();
                   }}
                   aria-label="닫기"
                 >

@@ -541,6 +541,16 @@ a.layering-info-card--link:focus-visible {
   gap: 8px;
 }
 
+.layering-chat__older-loading {
+  align-self: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(81, 217, 255, 0.1);
+  color: #91e8ff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .layering-chat__bubble {
   max-width: 82%;
   border-radius: 8px;
