@@ -287,10 +287,6 @@ body:has(.stepa-player-page) {
     padding: 1.0rem 1.6rem;
   }
 
-  #header_adaptive:before {
-    
-  }
-
   :root{
   --c_primary_base:none;
   }
